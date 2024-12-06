@@ -1,16 +1,23 @@
 import React, { useState } from 'react';
-import { StyleSheet, View, Text, TextInput, TouchableOpacity, Dimensions } from 'react-native';
-import { LinearGradient } from 'expo-linear-gradient'; // Use expo-linear-gradient
+import { StyleSheet, TextInput, TouchableOpacity, Text, View } from 'react-native';
+import { getAuth, sendPasswordResetEmail } from 'firebase/auth'; // Import Firebase auth methods
+import { LinearGradient } from 'expo-linear-gradient'; // expo-linear-gradient
 import { Image } from 'react-native-animatable'; // Animatable Image
-import logo from '../assets/logo.png';
-
-const { width } = Dimensions.get('window');
+import logo from '../assets/logo.png'; // Import the logo
 
 const ForgotPasswordPage = ({ navigation }) => {
   const [email, setEmail] = useState('');
+  const auth = getAuth(); // Initialize auth
 
-  const handleResetPassword = () => {
-    console.log('Reset password for:', email);
+  const handleResetPassword = async () => {
+    try {
+      await sendPasswordResetEmail(auth, email); // Use the correct method
+      alert('Password reset email sent!');
+      navigation.navigate('SignIn'); // Redirect to SignIn page after email is sent
+    } catch (error) {
+      console.error(error.message);
+      alert(error.message);
+    }
   };
 
   return (
@@ -50,10 +57,10 @@ const styles = StyleSheet.create({
     padding: 20,
   },
   logo: {
-    width: width * 0.4,
-    height: width * 0.4,
+    width: 100,
+    height: 100,
     marginBottom: 20,
-    borderRadius: width * 0.2,
+    borderRadius: 50,
   },
   title: {
     fontSize: 24,

@@ -1,17 +1,24 @@
 import React, { useState } from 'react';
-import { StyleSheet, View, Text, TextInput, TouchableOpacity, Dimensions } from 'react-native';
-import { LinearGradient } from 'expo-linear-gradient'; // Use expo-linear-gradient
+import { StyleSheet, TextInput, TouchableOpacity, Text, View } from 'react-native';
+import { getAuth, signInWithEmailAndPassword } from 'firebase/auth'; // Import Firebase auth methods
+import { LinearGradient } from 'expo-linear-gradient'; // expo-linear-gradient
 import { Image } from 'react-native-animatable'; // Animatable Image
-import logo from '../assets/logo.png';
-
-const { width } = Dimensions.get('window');
+import logo from '../assets/logo.png'; // Import the logo
 
 const SignInPage = ({ navigation }) => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const auth = getAuth(); // Initialize auth
 
-  const handleSignIn = () => {
-    console.log('Sign in with:', email, password);
+  const handleSignIn = async () => {
+    try {
+      await signInWithEmailAndPassword(auth, email, password); // Use the correct method
+      console.log('User signed in!');
+      navigation.navigate('Home'); // Redirect to Home page after sign-in
+    } catch (error) {
+      console.error('Error signing in:', error.message);
+      alert(error.message);
+    }
   };
 
   return (
@@ -65,10 +72,10 @@ const styles = StyleSheet.create({
     padding: 20,
   },
   logo: {
-    width: width * 0.4,
-    height: width * 0.4,
+    width: 100,
+    height: 100,
     marginBottom: 20,
-    borderRadius: width * 0.2,
+    borderRadius: 50,
   },
   title: {
     fontSize: 24,
@@ -106,6 +113,7 @@ const styles = StyleSheet.create({
   },
   signupContainer: {
     flexDirection: 'row',
+    marginTop: 15,
   },
   signupText: {
     color: '#fff',

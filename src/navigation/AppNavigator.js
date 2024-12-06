@@ -5,6 +5,7 @@ import LandingPage from '../screens/LandingPage';
 import SignInPage from '../screens/SignInPage';
 import SignUpPage from '../screens/SignUpPage';
 import ForgotPasswordPage from '../screens/ForgotPasswordPage';
+import { auth } from '../firebase'; // Import Firebase auth
 
 const Stack = createStackNavigator();
 
