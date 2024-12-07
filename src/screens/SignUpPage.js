@@ -1,12 +1,16 @@
-import React, { useState } from 'react';
+import React, { useState, useContext } from 'react';
 import { StyleSheet, TextInput, TouchableOpacity, Text, View, Dimensions, Modal } from 'react-native';
 import { getAuth, createUserWithEmailAndPassword } from 'firebase/auth';
+import { getFirestore, doc, setDoc } from 'firebase/firestore';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Image } from 'react-native-animatable';
 import * as ImagePicker from 'expo-image-picker';
 import logo from '../assets/logo.png';
+import User from '../models/User';
+import { UserContext } from '../context/UserContext';
 
 const { width } = Dimensions.get('window');
+
 
 const SignUpPage = ({ navigation }) => {
   const [name, setName] = useState('');
@@ -18,6 +22,7 @@ const SignUpPage = ({ navigation }) => {
   const [modalVisible, setModalVisible] = useState(false);
 
   const auth = getAuth();
+  const { setUser } = useContext(UserContext);
 
   const handleSignUp = async () => {
     if (password !== confirmPassword) {
@@ -25,8 +30,14 @@ const SignUpPage = ({ navigation }) => {
       return;
     }
     try {
-      await createUserWithEmailAndPassword(auth, email, password);
+      const userCredential = await createUserWithEmailAndPassword(auth, email, password);
+      const uid = userCredential.user.uid;
+      
       console.log('User signed up!');
+      const user = new User(uid, name, email);
+      await user.uploadToFirestore();
+      setUser(userCredential.user);
+      
       navigation.navigate('SignIn');
     } catch (error) {
       console.error(error.message);

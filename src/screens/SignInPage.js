@@ -1,18 +1,22 @@
-import React, { useState } from 'react';
+import React, { useState, useContext } from 'react';
 import { StyleSheet, TextInput, TouchableOpacity, Text, View } from 'react-native';
 import { getAuth, signInWithEmailAndPassword } from 'firebase/auth'; // Import Firebase auth methods
 import { LinearGradient } from 'expo-linear-gradient'; // expo-linear-gradient
 import { Image } from 'react-native-animatable'; // Animatable Image
 import logo from '../assets/logo.png'; // Import the logo
+import { UserContext } from '../context/UserContext';
 
 const SignInPage = ({ navigation }) => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const auth = getAuth(); // Initialize auth
+  const { setUser } = useContext(UserContext);
 
   const handleSignIn = async () => {
     try {
-      await signInWithEmailAndPassword(auth, email, password); // Use the correct method
+      const userCredential = await signInWithEmailAndPassword(auth, email, password);
+      setUser(userCredential.user);
+      console.log(userCredential);
       console.log('User signed in!');
       navigation.navigate('Home'); // Redirect to Home page after sign-in
     } catch (error) {

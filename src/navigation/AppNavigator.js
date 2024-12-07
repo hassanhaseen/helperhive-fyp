@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useContext } from "react";
 import { createStackNavigator } from "@react-navigation/stack";
 import { NavigationContainer } from "@react-navigation/native";
 import LandingPage from "../screens/LandingPage";
@@ -9,25 +9,17 @@ import HomePage from "../screens/HomePage";
 import ProfilePage from "../screens/ProfilePage";
 import SpecialOffers from "../screens/SpecialOffers"; // Import the SpecialOffers screen
 import FillProfilePage from "../screens/FillProfile"; // Import FillProfilePage
-import { auth } from "../firebase";
+import { UserContext } from '../context/UserContext';
 
 const Stack = createStackNavigator();
 
 const AppNavigator = () => {
-  const [isAuthenticated, setIsAuthenticated] = useState(false);
-
-  useEffect(() => {
-    const unsubscribe = auth.onAuthStateChanged((user) => {
-      setIsAuthenticated(!!user);
-    });
-
-    return unsubscribe;
-  }, []);
+  const { user } = useContext(UserContext);
 
   return (
     <NavigationContainer>
       <Stack.Navigator screenOptions={{ headerShown: false }}>
-        {isAuthenticated ? (
+        {user ? (
           <>
             <Stack.Screen name="HomePage" component={HomePage} />
             <Stack.Screen name="Profile" component={ProfilePage} />

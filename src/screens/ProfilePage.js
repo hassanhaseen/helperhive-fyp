@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useContext } from "react";
 import {
   View,
   Text,
@@ -12,9 +12,21 @@ import {
 } from "react-native";
 import Icon from "react-native-vector-icons/Ionicons";
 import Navbar from "./navbar"; // Import Navbar for bottom navigation
+import { auth } from "../firebase"; // Import auth from firebase
+import { UserContext } from '../context/UserContext';
+
 
 const ProfilePage = ({ navigation }) => {
   const [darkMode, setDarkMode] = useState(false);
+  const { user } = useContext(UserContext);
+
+  const handleLogout = () => {
+    auth.signOut().then(() => {
+      navigation.navigate("SignIn");
+    }).catch((error) => {
+      console.error("Error signing out: ", error);
+    });
+  };
 
   return (
     <SafeAreaView style={styles.safeArea}>
@@ -43,8 +55,8 @@ const ProfilePage = ({ navigation }) => {
                 <Icon name="pencil-outline" size={16} color="#fff" />
               </TouchableOpacity>
             </View>
-            <Text style={styles.profileName}>Andrew Ainsley</Text>
-            <Text style={styles.profileEmail}>andrew_ainsley@yourdomain.com</Text>
+            <Text style={styles.profileName}>{user?.displayName} </Text>
+            <Text style={styles.profileEmail}>{user?.email}</Text>
           </View>
 
           {/* Options */}
@@ -116,7 +128,7 @@ const ProfilePage = ({ navigation }) => {
             ))}
 
             {/* Logout */}
-            <TouchableOpacity style={styles.logoutRow}>
+            <TouchableOpacity style={styles.logoutRow} onPress={handleLogout}>
               <View style={styles.optionLeft}>
                 <Icon name="log-out-outline" size={24} color="#f87171" />
                 <Text style={[styles.optionText, { color: "#f87171" }]}>
