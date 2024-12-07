@@ -12,8 +12,13 @@ import {
 import { StatusBar } from "react-native";
 import Navbar from "./navbar"; // Import Navbar
 import Icon from "react-native-vector-icons/Ionicons";
+import { UserContext } from '../context/UserContext';
+import { useContext } from "react";
+
+
 
 const HomePage = ({ navigation }) => {
+  const { user } = useContext(UserContext);
   return (
     <SafeAreaView style={styles.safeArea}>
       <StatusBar backgroundColor="#111" barStyle="light-content" />
@@ -29,7 +34,7 @@ const HomePage = ({ navigation }) => {
                 style={styles.profileImage}
               />
               <Text style={styles.greetingText}>
-                Good Morning <Text style={styles.username}>Andrew Ainsley</Text> 👋
+                Good Morning <Text style={styles.username}>{user.displayName}</Text> 👋
               </Text>
             </View>
             <View style={styles.iconContainer}>

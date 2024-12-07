@@ -1,6 +1,6 @@
 import React, { useState, useContext } from 'react';
 import { StyleSheet, TextInput, TouchableOpacity, Text, View, Dimensions, Modal } from 'react-native';
-import { getAuth, createUserWithEmailAndPassword } from 'firebase/auth';
+import { getAuth, createUserWithEmailAndPassword, updateProfile, updatePhoneNumber } from 'firebase/auth';
 import { getFirestore, doc, setDoc } from 'firebase/firestore';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Image } from 'react-native-animatable';
@@ -8,6 +8,7 @@ import * as ImagePicker from 'expo-image-picker';
 import logo from '../assets/logo.png';
 import User from '../models/User';
 import { UserContext } from '../context/UserContext';
+
 
 const { width } = Dimensions.get('window');
 
@@ -30,11 +31,19 @@ const SignUpPage = ({ navigation }) => {
       return;
     }
     try {
+      const db = getFirestore();
       const userCredential = await createUserWithEmailAndPassword(auth, email, password);
       const uid = userCredential.user.uid;
+  
+      await updateProfile(userCredential.user, {
+        displayName: name,
+      });
+
       
+      
+
       console.log('User signed up!');
-      const user = new User(uid, name, email);
+      const user = new User(uid, name, email, "binary");
       await user.uploadToFirestore();
       setUser(userCredential.user);
       

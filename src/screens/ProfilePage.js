@@ -14,12 +14,14 @@ import Icon from "react-native-vector-icons/Ionicons";
 import Navbar from "./navbar"; // Import Navbar for bottom navigation
 import { auth } from "../firebase"; // Import auth from firebase
 import { UserContext } from '../context/UserContext';
+import { getAuth } from "firebase/auth";
 
 
 const ProfilePage = ({ navigation }) => {
   const [darkMode, setDarkMode] = useState(false);
   const { user } = useContext(UserContext);
-
+  const auth = getAuth();
+  const user_test = auth.currentUser;
   const handleLogout = () => {
     auth.signOut().then(() => {
       navigation.navigate("SignIn");
@@ -27,7 +29,7 @@ const ProfilePage = ({ navigation }) => {
       console.error("Error signing out: ", error);
     });
   };
-
+  console.log(user_test);
   return (
     <SafeAreaView style={styles.safeArea}>
       <StatusBar backgroundColor="#111" barStyle="light-content" />
