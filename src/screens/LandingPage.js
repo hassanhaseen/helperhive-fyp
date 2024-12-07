@@ -1,10 +1,10 @@
 import React from 'react';
 import { StyleSheet, View, Text, ScrollView, TouchableOpacity, Dimensions } from 'react-native';
-import { LinearGradient } from 'expo-linear-gradient'; // Use expo-linear-gradient
+import { LinearGradient } from 'expo-linear-gradient'; // expo-linear-gradient
 import { Image } from 'react-native-animatable'; // Animatable Image
 import logo from '../assets/logo.png'; // Import the logo
 
-const { width } = Dimensions.get('window');
+const { width } = Dimensions.get('window'); // Get screen width
 
 const LandingPage = ({ navigation }) => {
   return (
@@ -19,43 +19,23 @@ const LandingPage = ({ navigation }) => {
             duration={1500}
           />
         </View>
-        <Text
-          style={styles.heroTitle}
-          animation="fadeInUp"
-          delay={1000}
-          duration={1500}
-        >
-          Your One-Stop Home Services Solution
-        </Text>
-        <Text
-          style={styles.heroSubtitle}
-          animation="fadeInUp"
-          delay={1200}
-          duration={1500}
-        >
-          Find reliable professionals for all your home needs.
-        </Text>
+        <Text style={styles.heroTitle}>Your One-Stop Home Services Solution</Text>
+        <Text style={styles.heroSubtitle}>Find reliable professionals for all your home needs.</Text>
       </LinearGradient>
 
       <View style={styles.featuresSection}>
         <Text style={styles.sectionTitle}>Why Choose HelperHive?</Text>
         <View style={styles.featureItem}>
           <Text style={styles.featureTitle}>🏠 Wide Range of Services</Text>
-          <Text style={styles.featureDescription}>
-            From cleaning to repairs, we've got you covered.
-          </Text>
+          <Text style={styles.featureDescription}>From cleaning to repairs, we've got you covered.</Text>
         </View>
         <View style={styles.featureItem}>
           <Text style={styles.featureTitle}>👨‍🔧 Verified Professionals</Text>
-          <Text style={styles.featureDescription}>
-            All our helpers are background-checked and skilled.
-          </Text>
+          <Text style={styles.featureDescription}>All our helpers are background-checked and skilled.</Text>
         </View>
         <View style={styles.featureItem}>
           <Text style={styles.featureTitle}>⭐ Quality Assurance</Text>
-          <Text style={styles.featureDescription}>
-            Satisfaction guaranteed or your money back.
-          </Text>
+          <Text style={styles.featureDescription}>Satisfaction guaranteed or your money back.</Text>
         </View>
       </View>
 
@@ -76,7 +56,7 @@ const styles = StyleSheet.create({
     paddingVertical: 50,
   },
   logoContainer: {
-    marginTop: 35, // Add gap above the logo
+    marginTop: 20, // Added gap above the logo
   },
   heroImage: {
     width: width * 0.5,
