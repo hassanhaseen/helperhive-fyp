@@ -62,7 +62,6 @@ const styles = StyleSheet.create({
     width: width * 0.5,
     height: width * 0.5,
     marginBottom: 20,
-    borderRadius: width * 0.25,
   },
   heroTitle: {
     fontSize: 28,

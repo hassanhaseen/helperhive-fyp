@@ -17,14 +17,14 @@ const SpecialOffers = ({ navigation }) => {
       discount: "30%",
       title: "Today's Special!",
       description: "Get discount for every order, only valid for today",
-      backgroundColor: "#8b5cf6",
+      backgroundColor: "#4a90e2",
     },
     {
       id: 2,
       discount: "25%",
       title: "Friday Special!",
       description: "Get discount for every order, only valid for today",
-      backgroundColor: "#f87171",
+      backgroundColor: "#ff6b6b",
     },
     {
       id: 3,
@@ -44,7 +44,7 @@ const SpecialOffers = ({ navigation }) => {
 
   return (
     <SafeAreaView style={styles.safeArea}>
-      <StatusBar backgroundColor="#111" barStyle="light-content" />
+      <StatusBar backgroundColor="#005bea" barStyle="light-content" />
       <View style={styles.container}>
         {/* Header Section */}
         <View style={styles.header}>
@@ -81,12 +81,12 @@ export default SpecialOffers;
 const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
-    backgroundColor: "#111",
+    backgroundColor: "#005bea",
   },
   container: {
     flex: 1,
     paddingHorizontal: 20,
-    backgroundColor: "#111",
+    backgroundColor: "#f5f5f5",
   },
   header: {
     flexDirection: "row",
@@ -95,27 +95,33 @@ const styles = StyleSheet.create({
     marginVertical: 10,
   },
   headerTitle: {
-    fontSize: 20,
-    color: "#fff",
+    fontSize: 22,
+    color: "#4a90e2",
     fontWeight: "bold",
   },
   offerCard: {
-    borderRadius: 10,
+    borderRadius: 12,
     padding: 20,
     marginBottom: 15,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.2,
+    shadowRadius: 4,
+    elevation: 3,
   },
   discount: {
     color: "#fff",
-    fontSize: 24,
+    fontSize: 26,
     fontWeight: "bold",
   },
   offerTitle: {
     color: "#fff",
-    fontSize: 18,
+    fontSize: 20,
     marginVertical: 5,
+    fontWeight: "600",
   },
   offerDescription: {
-    color: "#fff",
-    fontSize: 14,
+    color: "#f0f0f0",
+    fontSize: 16,
   },
 });

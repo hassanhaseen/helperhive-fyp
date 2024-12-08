@@ -18,7 +18,7 @@ const SignInPage = ({ navigation }) => {
       setUser(userCredential.user);
       console.log(userCredential);
       console.log('User signed in!');
-      navigation.navigate('Home'); // Redirect to Home page after sign-in
+      navigation.navigate('HomePage'); // Redirect to Home page after sign-in
     } catch (error) {
       console.error('Error signing in:', error.message);
       alert(error.message);
@@ -79,7 +79,6 @@ const styles = StyleSheet.create({
     width: 100,
     height: 100,
     marginBottom: 20,
-    borderRadius: 50,
   },
   title: {
     fontSize: 24,

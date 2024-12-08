@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import {
   View,
   Text,
@@ -9,34 +9,46 @@ import {
   SafeAreaView,
   StatusBar,
   Platform,
+  ScrollView,
+  ActivityIndicator,
+  Alert,
 } from "react-native";
 import Icon from "react-native-vector-icons/Ionicons";
-import DateTimePicker from "@react-native-community/datetimepicker"; // Date Picker
-import CountryPicker from "react-native-country-picker-modal"; // Country Picker
-import * as ImagePicker from "expo-image-picker"; // Image Picker
+import DateTimePicker from "@react-native-community/datetimepicker";
+import CountryPicker from "react-native-country-picker-modal";
+import * as ImagePicker from "expo-image-picker";
+import { auth, db } from "../firebase";
+import { doc, setDoc } from "firebase/firestore";
 
 const FillProfilePage = ({ navigation }) => {
   const [date, setDate] = useState(new Date());
   const [showDatePicker, setShowDatePicker] = useState(false);
   const [countryCode, setCountryCode] = useState("US");
   const [callingCode, setCallingCode] = useState("+1");
-  const [name, setName] = useState("Andrew Ainsley");
-  const [lastName, setLastName] = useState("Andrew");
-  const [email, setEmail] = useState("andrew_ainsley@yourdomain.com");
+  const [name, setName] = useState("");
+  const [lastName, setLastName] = useState("");
+  const [email, setEmail] = useState("");
   const [phone, setPhone] = useState("");
-  const [address, setAddress] = useState("267 New Avenue Park, New York");
+  const [address, setAddress] = useState("");
   const [cnicNumber, setCnicNumber] = useState("");
   const [cnicFront, setCnicFront] = useState(null);
   const [cnicBack, setCnicBack] = useState(null);
   const [profileImage, setProfileImage] = useState(null);
+  const [loading, setLoading] = useState(false);
 
-  // Handle Date Picker
+  useEffect(() => {
+    const currentUser = auth.currentUser;
+    if (currentUser) {
+      setName(currentUser.displayName || "");
+      setEmail(currentUser.email || "");
+    }
+  }, []);
+
   const onChangeDate = (event, selectedDate) => {
     setShowDatePicker(false);
     if (selectedDate) setDate(selectedDate);
   };
 
-  // Handle Image Selection
   const pickImage = async (setImage) => {
     const result = await ImagePicker.launchImageLibraryAsync({
       mediaTypes: ImagePicker.MediaTypeOptions.Images,
@@ -46,154 +58,192 @@ const FillProfilePage = ({ navigation }) => {
     if (!result.canceled) setImage(result.uri);
   };
 
+  const validateFields = () => {
+    if (!name || !email || !cnicNumber) {
+      Alert.alert("Validation Error", "Please fill all required fields.");
+      return false;
+    }
+    return true;
+  };
+
+  const saveProfileData = async () => {
+    if (!validateFields()) return;
+
+    const currentUser = auth.currentUser;
+    if (!currentUser) {
+      Alert.alert("Error", "You must be signed in to save your profile.");
+      return;
+    }
+
+    setLoading(true);
+    const userId = currentUser.uid;
+
+    try {
+      await setDoc(doc(db, "users", userId), {
+        name,
+        lastName,
+        email,
+        phone,
+        address,
+        dateOfBirth: date.toISOString(),
+        cnicNumber,
+        cnicFront,
+        cnicBack,
+        profileImage,
+        countryCode,
+        callingCode,
+        isServiceProvider: true,
+        updatedAt: new Date(),
+      });
+
+      await setDoc(doc(db, "service_providers", userId), {
+        userId,
+        name,
+        lastName,
+        email,
+        phone,
+        address,
+        cnicNumber,
+        profileImage,
+        countryCode,
+        callingCode,
+        createdAt: new Date(),
+      });
+
+      Alert.alert("Success", "Your profile has been updated!");
+      navigation.navigate("Profile");
+    } catch (error) {
+      console.error("Error saving profile:", error);
+      Alert.alert("Error", "Failed to save profile. Please try again.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
   return (
     <SafeAreaView style={styles.safeArea}>
-      <StatusBar backgroundColor="#111" barStyle="light-content" />
+      <StatusBar backgroundColor="#005bea" barStyle="light-content" />
       <View style={styles.container}>
-        {/* Header Section */}
-        <View style={styles.header}>
-          <TouchableOpacity onPress={() => navigation.goBack()}>
-            <Icon name="arrow-back-outline" size={24} color="#fff" />
-          </TouchableOpacity>
-          <Text style={styles.headerTitle}>Fill Your Profile</Text>
-          <View style={{ width: 24 }} /> {/* Empty view for alignment */}
-        </View>
-
-        {/* Profile Image */}
-        <View style={styles.profileContainer}>
-          <Image
-            source={{
-              uri: profileImage || "https://via.placeholder.com/100",
-            }}
-            style={styles.profileImage}
-          />
-          <TouchableOpacity
-            style={styles.editButton}
-            onPress={() => pickImage(setProfileImage)}
-          >
-            <Icon name="camera-outline" size={16} color="#fff" />
-          </TouchableOpacity>
-        </View>
-
-        {/* Input Fields */}
-        <View style={styles.inputContainer}>
-          <View style={styles.inputField}>
-            <TextInput
-              placeholder="Full Name"
-              placeholderTextColor="#999"
-              value={name}
-              onChangeText={setName}
-              style={styles.inputText}
-            />
+        <ScrollView
+          showsVerticalScrollIndicator={false}
+          contentContainerStyle={styles.scrollContent}
+        >
+          <View style={styles.header}>
+            <TouchableOpacity onPress={() => navigation.goBack()}>
+              <Icon name="arrow-back-outline" size={24} color="#fff" />
+            </TouchableOpacity>
+            <Text style={styles.headerTitle}></Text>
           </View>
-          <View style={styles.inputField}>
-            <TextInput
-              placeholder="Last Name"
-              placeholderTextColor="#999"
-              value={lastName}
-              onChangeText={setLastName}
-              style={styles.inputText}
+
+          <View style={styles.profileContainer}>
+            <Image
+              source={{
+                uri: profileImage || "https://cdn-icons-png.flaticon.com/512/9187/9187604.png",
+              }}
+              style={styles.profileImage}
             />
-          </View>
-          {/* Date Picker */}
-          <View style={styles.inputField}>
-            <TextInput
-              placeholder="Date of Birth"
-              placeholderTextColor="#999"
-              value={date.toLocaleDateString()}
-              editable={false}
-              style={styles.inputText}
-            />
-            <TouchableOpacity onPress={() => setShowDatePicker(true)}>
-              <Icon name="calendar-outline" size={20} color="#8b5cf6" />
+            <TouchableOpacity
+              style={styles.editButton}
+              onPress={() => pickImage(setProfileImage)}
+            >
+              <Icon name="camera-outline" size={16} color="#fff" />
             </TouchableOpacity>
           </View>
-          {showDatePicker && (
-            <DateTimePicker
-              value={date}
-              mode="date"
-              display={Platform.OS === "ios" ? "spinner" : "default"}
-              onChange={onChangeDate}
-            />
-          )}
-          {/* Email */}
-          <View style={styles.inputField}>
+
+          <View style={styles.inputContainer}>
             <TextInput
-              placeholder="Email"
-              placeholderTextColor="#999"
+              placeholder="Full Name*"
+              placeholderTextColor="#aaa"
+              value={name}
+              onChangeText={setName}
+              style={styles.input}
+            />
+            <TextInput
+              placeholder="Last Name"
+              placeholderTextColor="#aaa"
+              value={lastName}
+              onChangeText={setLastName}
+              style={styles.input}
+            />
+            <TouchableOpacity
+              style={[styles.input, styles.datePicker]}
+              onPress={() => setShowDatePicker(true)}
+            >
+              <Text style={styles.dateText}>
+                {"Select Date of Birth"}
+              </Text>
+              <Icon name="calendar-outline" size={20} color="#4a90e2" />
+            </TouchableOpacity>
+            {showDatePicker && (
+              <DateTimePicker
+                value={date}
+                mode="date"
+                display={Platform.OS === "ios" ? "spinner" : "default"}
+                onChange={onChangeDate}
+              />
+            )}
+            <TextInput
+              placeholder="Email*"
+              placeholderTextColor="#aaa"
               value={email}
               onChangeText={setEmail}
-              style={styles.inputText}
+              style={styles.input}
             />
-            <Icon name="mail-outline" size={20} color="#8b5cf6" />
-          </View>
-          {/* Phone with Country Picker */}
-          <View style={styles.inputField}>
-            <CountryPicker
-              countryCode={countryCode}
-              withCallingCode
-              withFlag
-              onSelect={(country) => {
-                setCountryCode(country.cca2);
-                setCallingCode(country.callingCode[0]);
-              }}
-              containerButtonStyle={styles.countryPicker}
-            />
-            <TextInput
-              placeholder="Phone Number"
-              placeholderTextColor="#999"
-              value={phone}
-              onChangeText={setPhone}
-              style={styles.inputText}
-              keyboardType="phone-pad"
-            />
-          </View>
-          {/* Address */}
-          <View style={styles.inputField}>
+            <View style={styles.rowInput}>              
+              <TextInput
+                placeholder="Phone Number"
+                placeholderTextColor="#aaa"
+                value={phone}
+                onChangeText={setPhone}
+                style={[styles.input, styles.phoneInput]}
+                keyboardType="phone-pad"
+              />
+            </View>
             <TextInput
               placeholder="Address"
-              placeholderTextColor="#999"
+              placeholderTextColor="#aaa"
               value={address}
               onChangeText={setAddress}
-              style={styles.inputText}
+              style={styles.input}
             />
-            <Icon name="location-outline" size={20} color="#8b5cf6" />
-          </View>
-          {/* CNIC Number */}
-          <View style={styles.inputField}>
             <TextInput
-              placeholder="CNIC Number"
-              placeholderTextColor="#999"
+              placeholder="CNIC Number*"
+              placeholderTextColor="#aaa"
               value={cnicNumber}
               onChangeText={setCnicNumber}
-              style={styles.inputText}
+              style={styles.input}
               keyboardType="numeric"
             />
+            <TouchableOpacity
+              style={styles.uploadButton}
+              onPress={() => pickImage(setCnicFront)}
+            >
+              <Text style={styles.uploadText}>
+                {cnicFront ? "CNIC Front Uploaded" : "Upload CNIC Front"}
+              </Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={styles.uploadButton}
+              onPress={() => pickImage(setCnicBack)}
+            >
+              <Text style={styles.uploadText}>
+                {cnicBack ? "CNIC Back Uploaded" : "Upload CNIC Back"}
+              </Text>
+            </TouchableOpacity>
           </View>
-          {/* CNIC Front Picture */}
-          <TouchableOpacity
-            style={styles.uploadButton}
-            onPress={() => pickImage(setCnicFront)}
-          >
-            <Text style={styles.uploadText}>
-              {cnicFront ? "CNIC Front Uploaded" : "Upload CNIC Front"}
-            </Text>
-          </TouchableOpacity>
-          {/* CNIC Back Picture */}
-          <TouchableOpacity
-            style={styles.uploadButton}
-            onPress={() => pickImage(setCnicBack)}
-          >
-            <Text style={styles.uploadText}>
-              {cnicBack ? "CNIC Back Uploaded" : "Upload CNIC Back"}
-            </Text>
-          </TouchableOpacity>
-        </View>
 
-        {/* Continue Button */}
-        <TouchableOpacity style={styles.continueButton}>
-          <Text style={styles.continueText}>Continue</Text>
-        </TouchableOpacity>
+          <TouchableOpacity
+            style={styles.saveButton}
+            onPress={saveProfileData}
+            disabled={loading}
+          >
+            {loading ? (
+              <ActivityIndicator color="#fff" />
+            ) : (
+              <Text style={styles.saveText}>Save Profile</Text>
+            )}
+          </TouchableOpacity>
+        </ScrollView>
       </View>
     </SafeAreaView>
   );
@@ -204,23 +254,25 @@ export default FillProfilePage;
 const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
-    backgroundColor: "#111",
+    backgroundColor: "#005bea",
   },
   container: {
     flex: 1,
     paddingHorizontal: 20,
-    backgroundColor: "#111",
+    backgroundColor: "#f5f5f5",
+  },
+  scrollContent: {
+    paddingBottom: 20,
   },
   header: {
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
-    marginTop: 10,
     marginBottom: 20,
   },
   headerTitle: {
     fontSize: 20,
-    color: "#fff",
+    color: "#4a90e2",
     fontWeight: "bold",
   },
   profileContainer: {
@@ -231,55 +283,59 @@ const styles = StyleSheet.create({
     width: 100,
     height: 100,
     borderRadius: 50,
-    backgroundColor: "#333",
+    backgroundColor: "#ccc",
   },
   editButton: {
     position: "absolute",
     bottom: 0,
     right: 0,
-    backgroundColor: "#8b5cf6",
+    backgroundColor: "#4a90e2",
     borderRadius: 15,
     padding: 5,
   },
   inputContainer: {
     marginBottom: 20,
   },
-  inputField: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    backgroundColor: "#333",
+  input: {
+    backgroundColor: "#e6e9ee",
+    color: "#333",
     borderRadius: 10,
-    paddingHorizontal: 15,
+    padding: 15,
     marginBottom: 15,
   },
-  inputText: {
-    flex: 1,
-    color: "#fff",
-    paddingVertical: 10,
+  rowInput: {
+    flexDirection: "row",
+    alignItems: "center",
   },
-  countryPicker: {
-    marginRight: 10,
+  phoneInput: {
+    flex: 1,
+  },  
+  datePicker: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+  },
+  dateText: {
+    color: "#aaa",
   },
   uploadButton: {
-    backgroundColor: "#333",
+    backgroundColor: "#4a90e2",
     borderRadius: 10,
     paddingVertical: 15,
     alignItems: "center",
     marginBottom: 15,
   },
   uploadText: {
-    color: "#8b5cf6",
+    color: "#fff",
     fontSize: 14,
   },
-  continueButton: {
-    backgroundColor: "#8b5cf6",
+  saveButton: {
+    backgroundColor: "#4a90e2",
     borderRadius: 10,
     paddingVertical: 15,
     alignItems: "center",
-    marginTop: 20,
   },
-  continueText: {
+  saveText: {
     color: "#fff",
     fontSize: 16,
     fontWeight: "bold",

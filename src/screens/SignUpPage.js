@@ -188,10 +188,10 @@ const styles = StyleSheet.create({
     textDecorationLine: 'underline',
   },
   profileImage: {
-    width: width * 0.4,
-    height: width * 0.4,
-    borderRadius: width * 0.2,
+    width: width * 0.5,
+    height: width * 0.3,
     marginBottom: 20,
+    resizeMode: 'contain',
   },
   passwordStrength: {
     alignSelf: 'flex-start',

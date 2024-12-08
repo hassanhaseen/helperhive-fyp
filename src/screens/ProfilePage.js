@@ -1,4 +1,4 @@
-import React, { useState, useContext } from "react";
+import React, { useState, useContext, useEffect } from "react";
 import {
   View,
   Text,
@@ -9,45 +9,79 @@ import {
   SafeAreaView,
   StatusBar,
   ScrollView,
+  ActivityIndicator,
 } from "react-native";
 import Icon from "react-native-vector-icons/Ionicons";
-import Navbar from "./navbar"; // Import Navbar for bottom navigation
-import { auth } from "../firebase"; // Import auth from firebase
-import { UserContext } from '../context/UserContext';
-import { getAuth } from "firebase/auth";
-
+import Navbar from "./navbar";
+import { auth, db } from "../firebase";
+import { UserContext } from "../context/UserContext";
+import { doc, getDoc } from "firebase/firestore";
+import { useFocusEffect } from "@react-navigation/native";
 
 const ProfilePage = ({ navigation }) => {
   const [darkMode, setDarkMode] = useState(false);
+  const [loading, setLoading] = useState(true);
   const { user } = useContext(UserContext);
-  const auth = getAuth();
-  const user_test = auth.currentUser;
+
+  useFocusEffect(
+    React.useCallback(() => {
+      const fetchUserData = async () => {
+        if (auth.currentUser) {
+          try {
+            const userRef = doc(db, "users", auth.currentUser.uid);
+            const userDoc = await getDoc(userRef);
+
+            if (userDoc.exists()) {
+              // Populate other user data if needed
+            }
+          } catch (error) {
+            console.error("Error fetching user data:", error);
+          } finally {
+            setLoading(false);
+          }
+        }
+      };
+
+      fetchUserData();
+    }, [])
+  );
+
   const handleLogout = () => {
-    auth.signOut().then(() => {
-      navigation.navigate("SignIn");
-    }).catch((error) => {
-      console.error("Error signing out: ", error);
-    });
+    auth
+      .signOut()
+      .then(() => {
+        navigation.navigate("SignIn");
+      })
+      .catch((error) => {
+        console.error("Error signing out:", error);
+      });
   };
-  console.log(user_test);
+
+  if (loading) {
+    return (
+      <View style={styles.loaderContainer}>
+        <ActivityIndicator size="large" color="#4a90e2" />
+      </View>
+    );
+  }
+
   return (
     <SafeAreaView style={styles.safeArea}>
-      <StatusBar backgroundColor="#111" barStyle="light-content" />
+      <StatusBar backgroundColor="#005bea" barStyle="light-content" />
       <View style={styles.container}>
-        {/* Scrollable Content */}
         <ScrollView contentContainerStyle={styles.scrollContent}>
-          {/* Header Section */}
           <View style={styles.header}>
-            <Icon name="logo-laravel" size={30} color="#8b5cf6" />
+            <Icon name="logo-laravel" size={30} color="#4a90e2" />
             <Text style={styles.headerTitle}>Profile</Text>
             <Icon name="ellipsis-horizontal-outline" size={24} color="#fff" />
           </View>
 
-          {/* Profile Picture and Info */}
           <View style={styles.profileContainer}>
             <View>
               <Image
-                source={{ uri: "https://via.placeholder.com/100" }}
+                source={{
+                  uri: user?.profileImage || "https://cdn-icons-png.flaticon.com/512/9187/9187604.png",
+                }}
                 style={styles.profileImage}
               />
               <TouchableOpacity
@@ -57,64 +91,60 @@ const ProfilePage = ({ navigation }) => {
                 <Icon name="pencil-outline" size={16} color="#fff" />
               </TouchableOpacity>
             </View>
-            <Text style={styles.profileName}>{user?.displayName} </Text>
-            <Text style={styles.profileEmail}>{user?.email}</Text>
+            <Text style={styles.profileName}>
+              {user?.displayName || "Guest User"}
+            </Text>
+            <Text style={styles.profileEmail}>
+              {user?.email || "No email available"}
+            </Text>
           </View>
 
-          {/* Options */}
           <View style={styles.optionsContainer}>
-            {/* Settings Options */}
-            {[
-              {
-                name: "Edit Profile",
-                icon: "person-outline",
-                route: "FillProfile", // Navigate to FillProfile screen
-              },
-              { name: "Notification", icon: "notifications-outline" },
-              { name: "Payment", icon: "wallet-outline" },
-              { name: "Security", icon: "shield-outline" },
-            ].map((option, index) => (
-              <TouchableOpacity
-                key={index}
-                style={styles.optionRow}
-                onPress={() => {
-                  if (option.route) {
-                    navigation.navigate(option.route);
-                  }
-                }}
-              >
-                <View style={styles.optionLeft}>
-                  <Icon name={option.icon} size={24} color="#fff" />
-                  <Text style={styles.optionText}>{option.name}</Text>
-                </View>
-                <Icon name="chevron-forward-outline" size={20} color="#fff" />
-              </TouchableOpacity>
-            ))}
+            <TouchableOpacity
+              style={styles.optionRow}
+              onPress={() => navigation.navigate("FillProfile")}
+            >
+              <View style={styles.optionLeft}>
+                <Icon name="briefcase-outline" size={24} color="#4a90e2" />
+                <Text style={styles.optionText}>Become a Service Provider</Text>
+              </View>
+              <Icon name="chevron-forward-outline" size={20} color="#4a90e2" />
+            </TouchableOpacity>
 
-            {/* Language Option */}
+            <TouchableOpacity
+              style={styles.optionRow}
+              onPress={() =>
+                navigation.navigate("ServiceProviderRegistration")
+              }
+            >
+              <View style={styles.optionLeft}>
+                <Icon name="cloud-upload-outline" size={24} color="#4a90e2" />
+                <Text style={styles.optionText}>Upload Your Service</Text>
+              </View>
+              <Icon name="chevron-forward-outline" size={20} color="#4a90e2" />
+            </TouchableOpacity>
+
             <TouchableOpacity style={styles.optionRow}>
               <View style={styles.optionLeft}>
-                <Icon name="settings-outline" size={24} color="#fff" />
+                <Icon name="settings-outline" size={24} color="#4a90e2" />
                 <Text style={styles.optionText}>Language</Text>
               </View>
               <Text style={styles.languageText}>English (US)</Text>
             </TouchableOpacity>
 
-            {/* Dark Mode Toggle */}
             <View style={styles.optionRow}>
               <View style={styles.optionLeft}>
-                <Icon name="moon-outline" size={24} color="#fff" />
+                <Icon name="moon-outline" size={24} color="#4a90e2" />
                 <Text style={styles.optionText}>Dark Mode</Text>
               </View>
               <Switch
                 value={darkMode}
                 onValueChange={(value) => setDarkMode(value)}
-                thumbColor={darkMode ? "#8b5cf6" : "#fff"}
-                trackColor={{ false: "#333", true: "#8b5cf6" }}
+                thumbColor={darkMode ? "#4a90e2" : "#fff"}
+                trackColor={{ false: "#ccc", true: "#4a90e2" }}
               />
             </View>
 
-            {/* Privacy, Help, Invite Options */}
             {[
               { name: "Privacy Policy", icon: "lock-closed-outline" },
               { name: "Help Center", icon: "information-circle-outline" },
@@ -122,14 +152,17 @@ const ProfilePage = ({ navigation }) => {
             ].map((option, index) => (
               <TouchableOpacity key={index} style={styles.optionRow}>
                 <View style={styles.optionLeft}>
-                  <Icon name={option.icon} size={24} color="#fff" />
+                  <Icon name={option.icon} size={24} color="#4a90e2" />
                   <Text style={styles.optionText}>{option.name}</Text>
                 </View>
-                <Icon name="chevron-forward-outline" size={20} color="#fff" />
+                <Icon
+                  name="chevron-forward-outline"
+                  size={20}
+                  color="#4a90e2"
+                />
               </TouchableOpacity>
             ))}
 
-            {/* Logout */}
             <TouchableOpacity style={styles.logoutRow} onPress={handleLogout}>
               <View style={styles.optionLeft}>
                 <Icon name="log-out-outline" size={24} color="#f87171" />
@@ -141,7 +174,6 @@ const ProfilePage = ({ navigation }) => {
           </View>
         </ScrollView>
 
-        {/* Navbar */}
         <Navbar navigation={navigation} activeTab="Profile" />
       </View>
     </SafeAreaView>
@@ -153,11 +185,17 @@ export default ProfilePage;
 const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
-    backgroundColor: "#111",
+    backgroundColor: "#005bea",
   },
   container: {
     flex: 1,
-    backgroundColor: "#111",
+    backgroundColor: "#f5f5f5",
+  },
+  loaderContainer: {
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
+    backgroundColor: "#005bea",
   },
   scrollContent: {
     paddingHorizontal: 20,
@@ -170,8 +208,8 @@ const styles = StyleSheet.create({
     marginBottom: 20,
   },
   headerTitle: {
-    fontSize: 20,
-    color: "#fff",
+    fontSize: 22,
+    color: "#4a90e2",
     fontWeight: "bold",
   },
   profileContainer: {
@@ -182,26 +220,25 @@ const styles = StyleSheet.create({
     width: 100,
     height: 100,
     borderRadius: 50,
-    backgroundColor: "#333",
-    marginBottom: 10,
+    backgroundColor: "#ccc",
   },
   editButton: {
     position: "absolute",
     bottom: 0,
     right: 0,
-    backgroundColor: "#8b5cf6",
+    backgroundColor: "#4a90e2",
     borderRadius: 15,
     padding: 5,
   },
   profileName: {
-    fontSize: 18,
+    fontSize: 20,
     fontWeight: "bold",
-    color: "#fff",
+    color: "#333",
     marginTop: 5,
   },
   profileEmail: {
     fontSize: 14,
-    color: "#888",
+    color: "#555",
   },
   optionsContainer: {
     marginTop: 20,
@@ -212,7 +249,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
     paddingVertical: 15,
     borderBottomWidth: 1,
-    borderBottomColor: "#333",
+    borderBottomColor: "#ccc",
   },
   logoutRow: {
     flexDirection: "row",
@@ -226,11 +263,11 @@ const styles = StyleSheet.create({
   },
   optionText: {
     fontSize: 16,
-    color: "#fff",
+    color: "#333",
     marginLeft: 10,
   },
   languageText: {
     fontSize: 16,
-    color: "#888",
+    color: "#555",
   },
 });
