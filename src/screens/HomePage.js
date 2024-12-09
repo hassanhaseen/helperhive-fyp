@@ -150,6 +150,74 @@ const HomePage = ({ navigation }) => {
               No services found for "{searchQuery}".
             </Text>
           )}
+
+          {/* Services Section */}
+          <View style={styles.section00}>
+            <Text style={styles.sectionTitle00}>Service</Text>
+            <TouchableOpacity>
+              <Text style={styles.seeAll00}>See All</Text>
+            </TouchableOpacity>
+          </View>
+          <View style={styles.serviceGrid00}>
+            {[
+              { name: "Cleaning", icon: "leaf-outline", color: "#8b5cf6" },
+              { name: "Repairing", icon: "construct-outline", color: "#fbbf24" },
+              { name: "Painting", icon: "color-palette-outline", color: "#60a5fa" },
+              { name: "Laundry", icon: "shirt-outline", color: "#f87171" },
+              { name: "Appliance", icon: "tv-outline", color: "#34d399" },
+              { name: "Plumbing", icon: "water-outline", color: "#4ade80" },
+              { name: "Shifting", icon: "cube-outline", color: "#f472b6" },
+              { name: "More", icon: "ellipsis-horizontal-outline", color: "#c084fc" },
+            ].map((service, index) => (
+              <TouchableOpacity key={index} style={styles.serviceItem00}>
+                <View style={[styles.serviceIcon00, { backgroundColor: service.color }]}>
+                  <Icon name={service.icon} size={24} color="#fff" />
+                </View>
+                <Text style={styles.serviceText00}>{service.name}</Text>
+              </TouchableOpacity>
+            ))}
+          </View>
+
+          
+
+          {/* Special Offers */}
+          <View style={styles.section00}>
+            <Text style={styles.sectionTitle00}>Special Offers</Text>
+            <TouchableOpacity onPress={() => navigation.navigate("SpecialOffers")}>
+              <Text style={styles.seeAll00}>See All</Text>
+            </TouchableOpacity>
+          </View>
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            style={styles.offerContainer}
+          >
+            {[1, 2, 3].map((item, index) => (
+              <TouchableOpacity
+                key={index}
+                style={styles.offerCard}
+                onPress={() => navigation.navigate("SpecialOffers")}
+              >
+                <Text style={styles.offerText}>30%</Text>
+                <Text style={styles.offerSubtext}>Today's Special!</Text>
+                <Text style={styles.offerDesc}>
+                  Get discount for every order, only valid for today
+                </Text>
+                
+              </TouchableOpacity>
+            ))}
+          </ScrollView>
+
+
+
+
+
+
+
+
+
+
+
         </ScrollView>
 
         <Navbar navigation={navigation} activeTab="HomePage" />
@@ -263,5 +331,74 @@ const styles = StyleSheet.create({
     textAlign: "center",
     marginTop: 20,
     fontSize: 16,
+  },
+/*Service Categories Style*/
+  section00: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    marginHorizontal: 20,
+    marginVertical: 10,
+  },
+  sectionTitle00: {
+    color: "#000000",
+    fontSize: 18,
+    fontWeight: "bold",
+  },
+  seeAll00: {
+    color: "#005bea",
+  },
+  serviceGrid00: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    justifyContent: "space-around",
+    marginHorizontal: 10,
+  },
+  serviceItem00: {
+    width: "25%",
+    alignItems: "center",
+    marginBottom: 20,
+  },
+  serviceIcon00: {
+    width: 50,
+    height: 50,
+    borderRadius: 25,
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  serviceText00: {
+    fontSize: 14,
+    color: '#000', // Set text color to black
+    fontWeight: 'bold', // Make the text bold
+    textAlign: 'center', // Optional: Center-align text
+    marginTop: 8, // Optional: Add spacing if needed
+  },
+
+
+  /*Special Offers Style*/
+  offerContainer: {
+    flexDirection: "row",
+    paddingHorizontal: 20,
+  },
+  offerCard: {
+    //add gradient background
+    backgroundColor: "#4a90e2",
+    borderRadius: 10,
+    padding: 20,
+    marginRight: 15,
+    width: 250,
+  },
+  offerText: {
+    color: "#fff",
+    fontSize: 24,
+    fontWeight: "bold",
+  },
+  offerSubtext: {
+    color: "#fff",
+    fontSize: 16,
+    marginVertical: 5,
+  },
+  offerDesc: {
+    color: "#fff",
+    fontSize: 12,
   },
 });

@@ -182,11 +182,11 @@ const styles = StyleSheet.create({
   },
   senderBubble: {
     backgroundColor: "#24539c",
-    alignSelf: "flex-start",
+    alignSelf: "flex-end",
   },
   receiverBubble: {
     backgroundColor: "#24539c",
-    alignSelf: "flex-end",
+    alignSelf: "flex-start",
   },
   messageText: {
     color: "#fff",
