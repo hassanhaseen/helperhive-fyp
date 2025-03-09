@@ -104,17 +104,14 @@ const FillProfilePage = ({ navigation }) => {
       
       await setDoc(doc(db, "users", userId), {
         name,
-        lastName,
         email,
         phone,
         address,
-        dateOfBirth: date.toISOString(),
+        //dateOfBirth: date.toISOString(),
         cnicNumber,
         cnicFront,
         cnicBack,
         profileImage,
-        countryCode,
-        callingCode,
         isServiceProvider: false, // Require admin approval
         requestStatus: "Pending",
         updatedAt: new Date(),
