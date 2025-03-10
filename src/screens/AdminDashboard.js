@@ -52,6 +52,42 @@ const AdminDashboard = () => {
     }));
   };
 
+  const approveService = async (serviceId) => {
+    try {
+      await updateDoc(doc(db, "services", serviceId), { status: "Approved" });
+      Alert.alert("Success", "Service approved successfully");
+    } catch (error) {
+      Alert.alert("Error", "Failed to approve service");
+    }
+  };
+
+  const rejectService = async (serviceId) => {
+    try {
+      await deleteDoc(doc(db, "services", serviceId));
+      Alert.alert("Success", "Service rejected successfully");
+    } catch (error) {
+      Alert.alert("Error", "Failed to reject service");
+    }
+  };
+
+  const deleteServiceProvider = async (providerId) => {
+    try {
+      await deleteDoc(doc(db, "users", providerId));
+      Alert.alert("Success", "Service provider deleted successfully");
+    } catch (error) {
+      Alert.alert("Error", "Failed to delete service provider");
+    }
+  };
+
+  const deleteAvailableService = async (serviceId) => {
+    try {
+      await deleteDoc(doc(db, "services", serviceId));
+      Alert.alert("Success", "Service deleted successfully");
+    } catch (error) {
+      Alert.alert("Error", "Failed to delete service");
+    }
+  };
+
   return (
     <ScrollView style={styles.container}>
       <Text style={styles.title}>Admin Dashboard</Text>

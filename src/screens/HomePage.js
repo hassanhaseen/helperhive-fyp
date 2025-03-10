@@ -14,7 +14,7 @@ import {
 import Navbar from "./navbar";
 import Icon from "react-native-vector-icons/Ionicons";
 import { auth, db } from "../firebase";
-import { collection, getDocs, doc, getDoc } from "firebase/firestore";
+import { collection, getDocs, doc, getDoc, onSnapshot } from "firebase/firestore";
 import { UserContext } from "../context/UserContext";
 import { ThemeContext } from "../context/ThemeContext";
 import Toast from 'react-native-toast-message';
@@ -66,48 +66,19 @@ const HomePage = ({ navigation }) => {
 
   // Fetch services
   useEffect(() => {
-    const fetchServices = async () => {
-      try {
-        const servicesCollection = collection(db, "services");
-        const servicesSnapshot = await getDocs(servicesCollection);
-        const servicesList = [];
+    setLoading(true);
 
-        const userDocPromises = servicesSnapshot.docs.map(serviceDoc => {
-          const serviceData = serviceDoc.data();
-          return getDoc(doc(db, "users", serviceData.userId)).then(userDoc => ({
-            serviceDoc,
-            serviceData,
-            userDoc
-          }));
-        });
+    // Fetch Approved Services
+    const unsubscribeServices = onSnapshot(collection(db, "services"), (snapshot) => {
+      const servicesData = snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
+      setServices(servicesData.filter(service => service.status === "Approved"));
+      setFilteredServices(servicesData.filter(service => service.status === "Approved"));
+      setLoading(false);
+    });
 
-        const serviceUserData = await Promise.all(userDocPromises);
-
-        serviceUserData.forEach(({ serviceDoc, serviceData, userDoc }) => {
-          if (
-            userDoc.exists() &&
-            userDoc.data().isServiceProvider &&
-            userDoc.data().requestStatus === "Approved"
-          ) {
-            servicesList.push({ id: serviceDoc.id, ...serviceData });
-          }
-        });
-
-        setServices(servicesList);
-        setFilteredServices(servicesList);
-      } catch (error) {
-        console.error("Error fetching services:", error);
-        Toast.show({
-          type: 'error',
-          text1: 'Error',
-          text2: 'Failed to fetch services.',
-        });
-      } finally {
-        setLoading(false);
-      }
+    return () => {
+      unsubscribeServices();
     };
-
-    fetchServices();
   }, []);
 
   const handleSearch = (query) => {
