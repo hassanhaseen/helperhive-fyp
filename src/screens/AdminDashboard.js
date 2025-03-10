@@ -54,6 +54,29 @@ const AdminDashboard = () => {
     }));
   };
 
+  const approveUser = async (userId) => {
+    try {
+      await updateDoc(doc(db, "users", userId), {
+        isServiceProvider: true,
+        requestStatus: "Approved",
+      });
+      Alert.alert("Success", "User approved successfully");
+    } catch (error) {
+      Alert.alert("Error", "Failed to approve user");
+    }
+  };
+
+  const rejectUser = async (userId) => {
+    try {
+      await updateDoc(doc(db, "users", userId), {
+        requestStatus: "Rejected",
+      });
+      Alert.alert("Success", "User rejected successfully");
+    } catch (error) {
+      Alert.alert("Error", "Failed to reject user");
+    }
+  };
+
   const approveService = async (serviceId) => {
     try {
       await updateDoc(doc(db, "services", serviceId), { status: "Approved" });

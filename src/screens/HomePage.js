@@ -54,7 +54,7 @@ const HomePage = ({ navigation }) => {
           setUserImage(currentUser.photoURL);
         } else {
           const userDoc = await getDoc(doc(db, "users", currentUser.uid));
-          console.log(userDoc.data())
+          
           if (userDoc.exists()) {
             let userData = userDoc.data();
             setUserImage("https://kmwfchtknlfvinxelshc.supabase.co/storage/v1/object/public/cnic-images/" + userData?.userAvatar || "");
