@@ -48,20 +48,26 @@ const HomePage = ({ navigation }) => {
       const currentUser = auth.currentUser;
 
       if (currentUser) {
-        setUserName(currentUser.displayName || "User");
+        setUserName(currentUser.name || "User");
 
         if (currentUser.photoURL) {
           setUserImage(currentUser.photoURL);
         } else {
           const userDoc = await getDoc(doc(db, "users", currentUser.uid));
+          console.log(userDoc.data())
           if (userDoc.exists()) {
-            setUserImage(userDoc.data()?.profileImage || "");
+            let userData = userDoc.data();
+            setUserImage("https://kmwfchtknlfvinxelshc.supabase.co/storage/v1/object/public/cnic-images/" + userData?.userAvatar || "");
+            setUserName(userData?.name || "User");
           }
         }
       }
     };
 
+
+
     fetchUserDetails();
+
   }, []);
 
   // Fetch services

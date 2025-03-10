@@ -12,29 +12,30 @@ import {
   Image,
   Modal,
   KeyboardAvoidingView,
-  Platform
+  Platform,
 } from "react-native";
 import Icon from "react-native-vector-icons/Ionicons";
 import * as ImagePicker from "expo-image-picker";
 import { auth, db } from "../firebase";
 import { doc, setDoc, getDoc } from "firebase/firestore";
 import { ThemeContext } from "../context/ThemeContext";
-import Toast from 'react-native-toast-message';
+import Toast from "react-native-toast-message";
+import { supabase } from "../context/Supabase";
 
 const FillProfilePage = ({ navigation }) => {
   const { colors, isDarkMode } = useContext(ThemeContext);
 
-  const [name, setName] = useState("");
-  const [email, setEmail] = useState("");
-  const [phone, setPhone] = useState("");
-  const [cnicNumber, setCnicNumber] = useState("");
+  const [name, setName] = useState("xx");
+  const [email, setEmail] = useState("xx");
+  const [phone, setPhone] = useState("xx");
+  const [cnicNumber, setCnicNumber] = useState("37045-4122111-5");
   const [cnicFront, setCnicFront] = useState(null);
   const [cnicBack, setCnicBack] = useState(null);
   const [profileImage, setProfileImage] = useState(null);
-  const [experience, setExperience] = useState("");
-  const [address, setAddress] = useState("");
-  const [city, setCity] = useState("");
-  const [dateOfBirth, setDateOfBirth] = useState("");
+  const [experience, setExperience] = useState("00");
+  const [address, setAddress] = useState("ss");
+  const [city, setCity] = useState("ss");
+  const [dateOfBirth, setDateOfBirth] = useState("02-12-2004");
   const [loading, setLoading] = useState(false);
   const [requestStatus, setRequestStatus] = useState("");
   const [showModal, setShowModal] = useState(false);
@@ -46,6 +47,8 @@ const FillProfilePage = ({ navigation }) => {
       setEmail(currentUser.email || "");
       checkExistingRequest(currentUser.uid);
     }
+
+
   }, []);
 
   const checkExistingRequest = async (userId) => {
@@ -66,7 +69,7 @@ const FillProfilePage = ({ navigation }) => {
       Toast.show({
         type: "error",
         text1: "Permission Denied",
-        text2: "You need to allow gallery access."
+        text2: "You need to allow gallery access.",
       });
       return;
     }
@@ -81,7 +84,7 @@ const FillProfilePage = ({ navigation }) => {
       setImage(result.assets[0].uri);
       Toast.show({
         type: "success",
-        text1: "Image Uploaded"
+        text1: "Image Uploaded",
       });
     }
   };
@@ -94,7 +97,10 @@ const FillProfilePage = ({ navigation }) => {
     } else if (cleaned.length <= 4) {
       formatted = `${cleaned.slice(0, 2)}-${cleaned.slice(2)}`;
     } else {
-      formatted = `${cleaned.slice(0, 2)}-${cleaned.slice(2, 4)}-${cleaned.slice(4, 8)}`;
+      formatted = `${cleaned.slice(0, 2)}-${cleaned.slice(
+        2,
+        4
+      )}-${cleaned.slice(4, 8)}`;
     }
     setDateOfBirth(formatted);
   };
@@ -107,7 +113,10 @@ const FillProfilePage = ({ navigation }) => {
     } else if (cleaned.length <= 12) {
       formatted = `${cleaned.slice(0, 5)}-${cleaned.slice(5)}`;
     } else {
-      formatted = `${cleaned.slice(0, 5)}-${cleaned.slice(5, 12)}-${cleaned.slice(12, 13)}`;
+      formatted = `${cleaned.slice(0, 5)}-${cleaned.slice(
+        5,
+        12
+      )}-${cleaned.slice(12, 13)}`;
     }
     setCnicNumber(formatted);
   };
@@ -123,11 +132,20 @@ const FillProfilePage = ({ navigation }) => {
   };
 
   const validateForm = () => {
-    if (!name || !email || !cnicNumber || !phone || !experience || !address || !city || !dateOfBirth) {
+    if (
+      !name ||
+      !email ||
+      !cnicNumber ||
+      !phone ||
+      !experience ||
+      !address ||
+      !city ||
+      !dateOfBirth
+    ) {
       Toast.show({
         type: "error",
         text1: "Missing Fields",
-        text2: "Please fill all required fields."
+        text2: "Please fill all required fields.",
       });
       return false;
     }
@@ -136,7 +154,7 @@ const FillProfilePage = ({ navigation }) => {
       Toast.show({
         type: "error",
         text1: "Invalid Email",
-        text2: "Please enter a valid email address."
+        text2: "Please enter a valid email address.",
       });
       return false;
     }
@@ -145,7 +163,7 @@ const FillProfilePage = ({ navigation }) => {
       Toast.show({
         type: "error",
         text1: "Missing Images",
-        text2: "Please upload Profile, CNIC Front and CNIC Back images."
+        text2: "Please upload Profile, CNIC Front and CNIC Back images.",
       });
       return false;
     }
@@ -154,7 +172,7 @@ const FillProfilePage = ({ navigation }) => {
       Toast.show({
         type: "error",
         text1: "Invalid Date",
-        text2: "Enter Date of Birth in DD-MM-YYYY format."
+        text2: "Enter Date of Birth in DD-MM-YYYY format.",
       });
       return false;
     }
@@ -163,7 +181,7 @@ const FillProfilePage = ({ navigation }) => {
       Toast.show({
         type: "error",
         text1: "Invalid CNIC",
-        text2: "Enter a valid CNIC number (XXXXX-XXXXXXX-X)."
+        text2: "Enter a valid CNIC number (XXXXX-XXXXXXX-X).",
       });
       return false;
     }
@@ -178,7 +196,7 @@ const FillProfilePage = ({ navigation }) => {
     if (!currentUser) {
       Toast.show({
         type: "error",
-        text1: "User not logged in"
+        text1: "User not logged in",
       });
       return;
     }
@@ -187,14 +205,22 @@ const FillProfilePage = ({ navigation }) => {
       Toast.show({
         type: "info",
         text1: "Request Pending",
-        text2: "You already have a pending request."
+        text2: "You already have a pending request.",
       });
       return;
     }
 
     setLoading(true);
     const userId = currentUser.uid;
-    
+
+    const [userAvatar, cnicFrontPath, cnicBackPath] = await Promise.all([
+      uploadFile(profileImage),
+      uploadFile(cnicFront),
+      uploadFile(cnicBack),
+    ]);
+
+    console.log(userAvatar, cnicFrontPath, cnicBackPath);
+
     try {
       await setDoc(doc(db, "users", userId), {
         name,
@@ -203,9 +229,9 @@ const FillProfilePage = ({ navigation }) => {
         address,
         dateOfBirth,
         cnicNumber,
-        cnicFront,
-        cnicBack,
-        profileImage,
+        cnicFrontPath,
+        cnicBackPath,
+        userAvatar,
         isServiceProvider: false,
         requestStatus: "Pending",
         updatedAt: new Date(),
@@ -231,18 +257,59 @@ const FillProfilePage = ({ navigation }) => {
     }
   };
 
+  //
+  const uploadFile = async (fileUri) => {
+    try {
+
+      const fileExt = fileUri.split(".").pop();
+      const uniqueFileName = `${Date.now()}_${Math.round(
+        Math.random() * 1e9
+      )}.png`;
+
+
+      const response = await fetch(fileUri);
+      const blob = await response.blob();
+
+      const { data, error } = await supabase.storage
+        .from("cnic-images")
+        .upload(uniqueFileName, blob, {
+          contentType: `image/${fileExt}`,
+        });
+
+      if (error)  throw error;
+
+      return data.path; // Returns file path
+    } catch (error) {
+      console.error("Upload error:", error.message);
+      return null;
+    }
+  };
+
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: colors.background }}>
-      <StatusBar backgroundColor={colors.background} barStyle={isDarkMode ? "light-content" : "dark-content"} />
-      <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : "height"} style={{ flex: 1 }}>
+      <StatusBar
+        backgroundColor={colors.background}
+        barStyle={isDarkMode ? "light-content" : "dark-content"}
+      />
+      <KeyboardAvoidingView
+        behavior={Platform.OS === "ios" ? "padding" : "height"}
+        style={{ flex: 1 }}
+      >
         <ScrollView contentContainerStyle={styles.scrollContainer}>
-          <Text style={[styles.title, { color: colors.text }]}>Become a Service Provider</Text>
+          <Text style={[styles.title, { color: colors.text }]}>
+            Become a Service Provider
+          </Text>
 
           {/* Profile Image */}
-          <TouchableOpacity style={styles.profileContainer} onPress={() => pickImage(setProfileImage)}>
+          <TouchableOpacity
+            style={styles.profileContainer}
+            onPress={() => pickImage(setProfileImage)}
+          >
             <Image
               source={{
-                uri: profileImage || "https://cdn-icons-png.flaticon.com/512/9187/9187604.png",
+                uri:
+                  profileImage ||
+                  "https://cdn-icons-png.flaticon.com/512/9187/9187604.png",
               }}
               style={styles.profileImage}
             />
@@ -254,23 +321,59 @@ const FillProfilePage = ({ navigation }) => {
           <View style={styles.form}>
             {/* Form Inputs */}
             {[
-              { value: name, setter: setName, placeholder: "Full Name*", keyboardType: "default" },
-              { value: email, setter: setEmail, placeholder: "Email*", keyboardType: "email-address" },
-              { value: phone, setter: setPhone, placeholder: "Phone Number*", keyboardType: "phone-pad" },
-              { value: experience, setter: setExperience, placeholder: "Experience (Years)*", keyboardType: "numeric" },
-              { value: address, setter: setAddress, placeholder: "Address*", keyboardType: "default" },
-              { value: city, setter: setCity, placeholder: "City*", keyboardType: "default" },
+              {
+                value: name,
+                setter: setName,
+                placeholder: "Full Name*",
+                keyboardType: "default",
+              },
+              {
+                value: email,
+                setter: setEmail,
+                placeholder: "Email*",
+                keyboardType: "email-address",
+              },
+              {
+                value: phone,
+                setter: setPhone,
+                placeholder: "Phone Number*",
+                keyboardType: "phone-pad",
+              },
+              {
+                value: experience,
+                setter: setExperience,
+                placeholder: "Experience (Years)*",
+                keyboardType: "numeric",
+              },
+              {
+                value: address,
+                setter: setAddress,
+                placeholder: "Address*",
+                keyboardType: "default",
+              },
+              {
+                value: city,
+                setter: setCity,
+                placeholder: "City*",
+                keyboardType: "default",
+              },
             ].map((field, index) => (
               <TextInput
                 key={index}
                 placeholder={field.placeholder}
-                placeholderTextColor={colors.placeholder || (isDarkMode ? "#888" : "#888")}
+                placeholderTextColor={
+                  colors.placeholder || (isDarkMode ? "#888" : "#888")
+                }
                 value={field.value}
                 onChangeText={field.setter}
                 keyboardType={field.keyboardType}
                 style={[
                   styles.input,
-                  { backgroundColor: colors.card, color: colors.text, borderColor: colors.border }
+                  {
+                    backgroundColor: colors.card,
+                    color: colors.text,
+                    borderColor: colors.border,
+                  },
                 ]}
               />
             ))}
@@ -278,28 +381,40 @@ const FillProfilePage = ({ navigation }) => {
             {/* CNIC */}
             <TextInput
               placeholder="CNIC Number (XXXXX-XXXXXXX-X)*"
-              placeholderTextColor={colors.placeholder || (isDarkMode ? "#888" : "#888")}
+              placeholderTextColor={
+                colors.placeholder || (isDarkMode ? "#888" : "#888")
+              }
               value={cnicNumber}
               onChangeText={formatCNICInput}
               keyboardType="numeric"
               maxLength={15}
               style={[
                 styles.input,
-                { backgroundColor: colors.card, color: colors.text, borderColor: colors.border }
+                {
+                  backgroundColor: colors.card,
+                  color: colors.text,
+                  borderColor: colors.border,
+                },
               ]}
             />
 
             {/* Date of Birth */}
             <TextInput
               placeholder="Date of Birth (DD-MM-YYYY)*"
-              placeholderTextColor={colors.placeholder || (isDarkMode ? "#888" : "#888")}
+              placeholderTextColor={
+                colors.placeholder || (isDarkMode ? "#888" : "#888")
+              }
               value={dateOfBirth}
               onChangeText={formatDOBInput}
               keyboardType="numeric"
               maxLength={10}
               style={[
                 styles.input,
-                { backgroundColor: colors.card, color: colors.text, borderColor: colors.border }
+                {
+                  backgroundColor: colors.card,
+                  color: colors.text,
+                  borderColor: colors.border,
+                },
               ]}
             />
 
@@ -308,14 +423,18 @@ const FillProfilePage = ({ navigation }) => {
               style={[styles.uploadButton, { backgroundColor: colors.primary }]}
               onPress={() => pickImage(setCnicFront)}
             >
-              <Text style={styles.uploadText}>{cnicFront ? "CNIC Front Uploaded ✅" : "Upload CNIC Front"}</Text>
+              <Text style={styles.uploadText}>
+                {cnicFront ? "CNIC Front Uploaded ✅" : "Upload CNIC Front"}
+              </Text>
             </TouchableOpacity>
 
             <TouchableOpacity
               style={[styles.uploadButton, { backgroundColor: colors.primary }]}
               onPress={() => pickImage(setCnicBack)}
             >
-              <Text style={styles.uploadText}>{cnicBack ? "CNIC Back Uploaded ✅" : "Upload CNIC Back"}</Text>
+              <Text style={styles.uploadText}>
+                {cnicBack ? "CNIC Back Uploaded ✅" : "Upload CNIC Back"}
+              </Text>
             </TouchableOpacity>
 
             {/* Submit */}
@@ -336,13 +455,22 @@ const FillProfilePage = ({ navigation }) => {
         {/* Success Modal */}
         <Modal visible={showModal} transparent={true} animationType="fade">
           <View style={styles.modalContainer}>
-            <View style={[styles.modalContent, { backgroundColor: colors.card }]}>
-              <Icon name="checkmark-circle-outline" size={60} color={colors.primary} />
+            <View
+              style={[styles.modalContent, { backgroundColor: colors.card }]}
+            >
+              <Icon
+                name="checkmark-circle-outline"
+                size={60}
+                color={colors.primary}
+              />
               <Text style={[styles.modalText, { color: colors.text }]}>
                 Your request has been submitted successfully!
               </Text>
               <TouchableOpacity
-                style={[styles.modalButton, { backgroundColor: colors.primary }]}
+                style={[
+                  styles.modalButton,
+                  { backgroundColor: colors.primary },
+                ]}
                 onPress={() => {
                   setShowModal(false);
                   navigation.navigate("Profile");

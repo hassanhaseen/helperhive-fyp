@@ -2,6 +2,7 @@ import React, { createContext, useState, useEffect } from 'react';
 import { auth, firestore } from '../firebase'; // Import Firestore
 import { collection, query, where, onSnapshot, doc, updateDoc, serverTimestamp } from "firebase/firestore";
 
+
 export const UserContext = createContext();
 
 export const UserProvider = ({ children }) => {
@@ -14,6 +15,7 @@ export const UserProvider = ({ children }) => {
           const userDoc = await firestore.collection('users').doc(user.uid).get();
           if (userDoc.exists()) {
             const userData = userDoc.data();
+            
             const reviewsRef = collection(firestore, "reviews");
             const q = query(reviewsRef, where("userId", "==", user.uid));
             const unsubscribeReviews = onSnapshot(q, (snapshot) => {
@@ -39,7 +41,7 @@ export const UserProvider = ({ children }) => {
         setUser(null);
       }
     });
-
+    
     return unsubscribe;
   }, []);
 
