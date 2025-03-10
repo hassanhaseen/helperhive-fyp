@@ -16,7 +16,7 @@ import Icon from "react-native-vector-icons/Ionicons";
 import Navbar from "./navbar";
 
 import { auth, db } from "../firebase";
-import { doc, getDoc } from "firebase/firestore";
+import { doc, getDoc, updateDoc, serverTimestamp } from "firebase/firestore";
 
 import { UserContext } from "../context/UserContext";
 import { ThemeContext } from "../context/ThemeContext";
@@ -26,7 +26,7 @@ import Toast from "react-native-toast-message";
 
 const ProfilePage = ({ navigation }) => {
   const [loading, setLoading] = useState(true);
-  const { user, setUser } = useContext(UserContext);
+  const { user, setUser, handleLogout } = useContext(UserContext);
   const { isDarkMode, toggleDarkMode, colors } = useContext(ThemeContext);
 
   const [userData, setUserData] = useState(null);
@@ -65,7 +65,19 @@ const ProfilePage = ({ navigation }) => {
     }, [])
   );
 
-  const handleLogout = () => {
+  const handleUserLogout = async () => {
+    if (user) {
+      try {
+        // Update last seen when user signs out
+        await updateDoc(doc(db, 'users', user.uid), {
+          isOnline: false,
+          lastSeen: serverTimestamp(),
+        });
+      } catch (error) {
+        console.error("Error updating user status:", error);
+      }
+    }
+
     auth
       .signOut()
       .then(() => {
@@ -101,7 +113,7 @@ const ProfilePage = ({ navigation }) => {
               source={{ uri: userData?.profileImage || "https://cdn-icons-png.flaticon.com/512/9187/9187604.png" }}
               style={styles.profileImage}
             />
-            <Text style={[styles.profileName, { color: colors.text }]}>
+            <Text style={[styles.profileName, { color: colors.text }]}> 
               {userData?.name || "Guest User"}
             </Text>
             <Text style={[styles.profileEmail, { color: colors.text }]}>
@@ -157,7 +169,7 @@ const ProfilePage = ({ navigation }) => {
             <Switch value={isDarkMode} onValueChange={toggleDarkMode} thumbColor={isDarkMode ? "#fff" : "#fff"} trackColor={{ false: "#bbb", true: colors.primary }} />
           </View>
 
-          <TouchableOpacity style={[styles.optionRow, { backgroundColor: colors.card }]} onPress={handleLogout}>
+          <TouchableOpacity style={[styles.optionRow, { backgroundColor: colors.card }]} onPress={handleUserLogout}>
             <View style={styles.leftRow}>
               <Icon name="log-out-outline" size={24} color="#f87171" />
               <Text style={[styles.optionText, { color: "#f87171" }]}>Logout</Text>

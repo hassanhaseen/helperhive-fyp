@@ -210,7 +210,11 @@ const BookingsScreen = ({ route, navigation }) => {
           {bookings.length === 0 ? (
             <Text style={[styles.emptyText, { color: colors.text }]}>No bookings found</Text>
           ) : (
-            bookings.map((item) => renderBooking({ item }))
+            bookings.map((item) => (
+              <View key={item.id}>
+                {renderBooking({ item })}
+              </View>
+            ))
           )}
         </ScrollView>
 
