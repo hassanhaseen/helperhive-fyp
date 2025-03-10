@@ -1,74 +1,80 @@
-import React from "react";
+import React, { useContext } from "react";
 import { View, Text, TouchableOpacity, StyleSheet } from "react-native";
 import Icon from "react-native-vector-icons/Ionicons";
+import { ThemeContext } from "../context/ThemeContext";
 
 const Navbar = ({ navigation, activeTab }) => {
+  const { colors, isDarkMode } = useContext(ThemeContext);
+
   const tabs = [
-    { name: "HomePage", icon: "home", route: "HomePage" },
-    { name: "Bookings", icon: "document-text-outline", route: "Bookings" },
-    { name: "Inbox", icon: "chatbubble-outline", route: "Inbox" },
-    { name: "Profile", icon: "person-outline", route: "Profile" },
+    { name: "HomePage", label: "Home", icon: "home-outline" },
+    { name: "Bookings", label: "Bookings", icon: "file-tray-full-outline" },
+    { name: "Inbox", label: "Inbox", icon: "chatbox-ellipses-outline" },
+    { name: "Profile", label: "Profile", icon: "person-outline" },
   ];
 
   return (
-    <View style={styles.navbarContainer}>
-      {tabs.map((tab, index) => (
-        <TouchableOpacity
-          key={index}
-          style={[
-            styles.navItem,
-            activeTab === tab.name ? styles.activeTab : null,
-          ]}
-          onPress={() => {
-            if (navigation && tab.route) {
-              console.log(`Navigating to ${tab.route}`);
-              navigation.navigate(tab.route);
-            }
-          }}
-        >
-          <Icon
-            name={tab.icon}
-            size={28}
-            color={activeTab === tab.name ? "#4a90e2" : "#bbb"}
-          />
-          <Text
-            style={[
-              styles.navText,
-              { color: activeTab === tab.name ? "#4a90e2" : "#bbb" },
-            ]}
+    <View style={[styles.container, { backgroundColor: colors.card }]}>
+      {tabs.map((tab) => {
+        const isActive = activeTab === tab.name;
+
+        return (
+          <TouchableOpacity
+            key={tab.name}
+            style={styles.tabButton}
+            onPress={() => navigation.navigate(tab.name)}
           >
-            {tab.name}
-          </Text>
-        </TouchableOpacity>
-      ))}
+            <Icon
+              name={tab.icon}
+              size={24}
+              color={isActive ? colors.primary : "#aaa"}
+              style={isActive ? styles.activeIcon : styles.inactiveIcon}
+            />
+            <Text
+              style={[
+                styles.tabLabel,
+                {
+                  color: isActive ? colors.primary : "#aaa",
+                  fontWeight: isActive ? "bold" : "normal",
+                },
+              ]}
+            >
+              {tab.label}
+            </Text>
+          </TouchableOpacity>
+        );
+      })}
     </View>
   );
 };
-
 const styles = StyleSheet.create({
-  navbarContainer: {
+  container: {
     flexDirection: "row",
     justifyContent: "space-around",
     alignItems: "center",
-    backgroundColor: "#005bea",
-    paddingVertical: 12,
+    height: 60,
+    elevation: 10,
+    shadowColor: "#000",
+    shadowOpacity: 0.1,
+    shadowOffset: { width: 0, height: -1 },
+    shadowRadius: 4,
     borderTopWidth: 1,
-    borderTopColor: "#333",
+    borderColor: "#e6e6e6",
   },
-  navItem: {
-    alignItems: "center",
+  tabButton: {
     flex: 1,
-    paddingVertical: 8,
+    justifyContent: "center",
+    alignItems: "center",
   },
-  navText: {
+  activeIcon: {
+    transform: [{ scale: 1.1 }],
+  },
+  inactiveIcon: {
+    transform: [{ scale: 1 }],
+  },
+  tabLabel: {
     fontSize: 12,
     marginTop: 4,
-    fontWeight: "600",
-  },
-  activeTab: {
-    borderBottomWidth: 2,
-    borderBottomColor: "#4a90e2",
   },
 });
-
 export default Navbar;

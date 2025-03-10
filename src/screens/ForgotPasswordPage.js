@@ -1,22 +1,75 @@
 import React, { useState } from 'react';
-import { StyleSheet, TextInput, TouchableOpacity, Text, View } from 'react-native';
-import { getAuth, sendPasswordResetEmail } from 'firebase/auth'; // Import Firebase auth methods
-import { LinearGradient } from 'expo-linear-gradient'; // expo-linear-gradient
-import { Image } from 'react-native-animatable'; // Animatable Image
-import logo from '../assets/logo.png'; // Import the logo
+import {
+  StyleSheet,
+  TextInput,
+  TouchableOpacity,
+  Text,
+  ActivityIndicator,
+} from 'react-native';
+import { getAuth, sendPasswordResetEmail } from 'firebase/auth';
+import { LinearGradient } from 'expo-linear-gradient';
+import { Image } from 'react-native-animatable';
+import Toast from 'react-native-toast-message';
+
+import logo from '../assets/logo.png';
 
 const ForgotPasswordPage = ({ navigation }) => {
   const [email, setEmail] = useState('');
-  const auth = getAuth(); // Initialize auth
+  const [loading, setLoading] = useState(false);
+
+  const auth = getAuth();
 
   const handleResetPassword = async () => {
+    // Validation
+    if (!email) {
+      Toast.show({
+        type: 'error',
+        text1: 'Missing Email',
+        text2: 'Please enter your email address.',
+      });
+      return;
+    }
+
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(email)) {
+      Toast.show({
+        type: 'error',
+        text1: 'Invalid Email',
+        text2: 'Please enter a valid email address.',
+      });
+      return;
+    }
+
     try {
-      await sendPasswordResetEmail(auth, email); // Use the correct method
-      alert('Password reset email sent!');
-      navigation.navigate('SignIn'); // Redirect to SignIn page after email is sent
+      setLoading(true);
+
+      await sendPasswordResetEmail(auth, email);
+
+      Toast.show({
+        type: 'success',
+        text1: 'Reset Email Sent!',
+        text2: 'Check your inbox for instructions to reset your password.',
+      });
+
+      // Navigate back to SignIn page
+      navigation.navigate('SignIn');
     } catch (error) {
       console.error(error.message);
-      alert(error.message);
+
+      let errorMsg = 'An error occurred. Please try again.';
+      if (error.code === 'auth/user-not-found') {
+        errorMsg = 'No account found with this email.';
+      } else if (error.code === 'auth/invalid-email') {
+        errorMsg = 'Invalid email address.';
+      }
+
+      Toast.show({
+        type: 'error',
+        text1: 'Failed to Send Reset Email',
+        text2: errorMsg,
+      });
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -29,7 +82,9 @@ const ForgotPasswordPage = ({ navigation }) => {
         delay={500}
         duration={1500}
       />
+
       <Text style={styles.title}>Reset Your Password</Text>
+
       <TextInput
         style={styles.input}
         placeholder="Email"
@@ -39,9 +94,19 @@ const ForgotPasswordPage = ({ navigation }) => {
         keyboardType="email-address"
         autoCapitalize="none"
       />
-      <TouchableOpacity style={styles.button} onPress={handleResetPassword}>
-        <Text style={styles.buttonText}>Send Reset Link</Text>
+
+      <TouchableOpacity
+        style={styles.button}
+        onPress={handleResetPassword}
+        disabled={loading}
+      >
+        {loading ? (
+          <ActivityIndicator color="#fff" />
+        ) : (
+          <Text style={styles.buttonText}>Send Reset Link</Text>
+        )}
       </TouchableOpacity>
+
       <TouchableOpacity onPress={() => navigation.navigate('SignIn')}>
         <Text style={styles.backToSignIn}>Back to Sign In</Text>
       </TouchableOpacity>

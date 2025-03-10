@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useContext } from "react";
 import {
   View,
   Text,
@@ -6,7 +6,9 @@ import {
   StyleSheet,
   TouchableOpacity,
   ActivityIndicator,
-  Alert,
+  SafeAreaView,
+  StatusBar,
+  ScrollView,
 } from "react-native";
 import Icon from "react-native-vector-icons/Ionicons";
 import { auth, db } from "../firebase";
@@ -21,8 +23,12 @@ import {
   serverTimestamp,
 } from "firebase/firestore";
 import Navbar from "./navbar";
+import { ThemeContext } from "../context/ThemeContext";
+import Toast from "react-native-toast-message";
 
 const BookingsScreen = ({ route, navigation }) => {
+  const { colors, isDarkMode } = useContext(ThemeContext);
+
   const [bookings, setBookings] = useState([]);
   const [loading, setLoading] = useState(true);
   const user = auth.currentUser;
@@ -32,10 +38,9 @@ const BookingsScreen = ({ route, navigation }) => {
 
     const bookingsRef = collection(db, "bookings");
 
-    // Fetch bookings where the current user is either the customer or service provider
     const q = query(
       bookingsRef,
-      where("participants", "array-contains", user.uid) // Fetch both user & provider bookings
+      where("participants", "array-contains", user.uid)
     );
 
     const unsubscribe = onSnapshot(q, (snapshot) => {
@@ -50,7 +55,6 @@ const BookingsScreen = ({ route, navigation }) => {
     return () => unsubscribe();
   }, []);
 
-  // Check if a service is passed from ServiceDetails for booking
   useEffect(() => {
     if (route.params?.service && route.params?.selectedDate) {
       handleNewBooking(route.params.service, route.params.selectedDate);
@@ -59,7 +63,10 @@ const BookingsScreen = ({ route, navigation }) => {
 
   const handleNewBooking = async (service, selectedDate) => {
     if (!user) {
-      Alert.alert("Error", "You must be logged in to book a service.");
+      Toast.show({
+        type: "error",
+        text1: "You must be logged in to book a service.",
+      });
       return;
     }
 
@@ -72,92 +79,104 @@ const BookingsScreen = ({ route, navigation }) => {
         serviceName: service.serviceName,
         providerName: service.providerName || "Unknown",
         status: "Pending",
-        bookingDateTime: selectedDate.toISOString(), // Save selected date & time
+        bookingDateTime: selectedDate.toISOString(),
         timestamp: serverTimestamp(),
       });
 
-      Alert.alert("Success", "Your booking has been placed!");
+      Toast.show({
+        type: "success",
+        text1: "Booking placed successfully!",
+      });
     } catch (error) {
       console.error("Error booking service:", error);
-      Alert.alert("Error", "Failed to book service.");
+      Toast.show({
+        type: "error",
+        text1: "Failed to book service.",
+      });
     }
   };
 
   const cancelBooking = async (bookingId) => {
-    Alert.alert("Cancel Booking", "Are you sure you want to cancel this booking?", [
-      { text: "No", style: "cancel" },
-      {
-        text: "Yes",
-        onPress: async () => {
-          try {
-            await updateDoc(doc(db, "bookings", bookingId), { status: "Canceled" });
-          } catch (error) {
-            console.error("Error canceling booking:", error);
-          }
-        },
-      },
-    ]);
+    Toast.show({
+      type: "info",
+      text1: "Cancelling Booking...",
+    });
+
+    try {
+      await updateDoc(doc(db, "bookings", bookingId), { status: "Canceled" });
+      Toast.show({
+        type: "success",
+        text1: "Booking canceled.",
+      });
+    } catch (error) {
+      console.error("Error canceling booking:", error);
+      Toast.show({
+        type: "error",
+        text1: "Failed to cancel booking.",
+      });
+    }
   };
 
   const acceptBooking = async (bookingId) => {
     try {
       await updateDoc(doc(db, "bookings", bookingId), { status: "Confirmed" });
-      Alert.alert("Booking Accepted", "You have accepted this booking.");
+      Toast.show({
+        type: "success",
+        text1: "Booking accepted!",
+      });
     } catch (error) {
       console.error("Error accepting booking:", error);
     }
   };
 
   const rejectBooking = async (bookingId) => {
-    Alert.alert("Reject Booking", "Are you sure you want to reject this booking?", [
-      { text: "No", style: "cancel" },
-      {
-        text: "Yes",
-        onPress: async () => {
-          try {
-            await updateDoc(doc(db, "bookings", bookingId), { status: "Rejected" });
-          } catch (error) {
-            console.error("Error rejecting booking:", error);
-          }
-        },
-      },
-    ]);
+    try {
+      await updateDoc(doc(db, "bookings", bookingId), { status: "Rejected" });
+      Toast.show({
+        type: "success",
+        text1: "Booking rejected.",
+      });
+    } catch (error) {
+      console.error("Error rejecting booking:", error);
+      Toast.show({
+        type: "error",
+        text1: "Failed to reject booking.",
+      });
+    }
   };
 
   const renderBooking = ({ item }) => (
-    <View style={styles.bookingItem}>
+    <View style={[styles.bookingItem, { backgroundColor: colors.card }]}>
       <View style={styles.bookingInfo}>
-        <Text style={styles.serviceText}>{item.serviceName}</Text>
-        <Text style={styles.providerText}>
+        <Text style={[styles.serviceText, { color: colors.text }]}>{item.serviceName}</Text>
+        <Text style={[styles.providerText, { color: colors.text }]}>
           {item.userId === user.uid ? "Provider" : "Customer"}: {item.providerName}
         </Text>
-        <Text style={styles.dateText}>
+        <Text style={[styles.dateText, { color: colors.text }]}>
           Date & Time: {new Date(item.bookingDateTime).toLocaleString()}
         </Text>
         <Text style={[styles.status, styles[item.status]]}>{item.status}</Text>
       </View>
 
-      {/* Show "Cancel" button only for users who booked the service */}
       {item.status === "Pending" && item.userId === user.uid && (
         <TouchableOpacity
-          style={styles.cancelButton}
+          style={[styles.cancelButton, { backgroundColor: colors.error || "#ff4d4d" }]}
           onPress={() => cancelBooking(item.id)}
         >
           <Text style={styles.cancelText}>Cancel</Text>
         </TouchableOpacity>
       )}
 
-      {/* Show "Accept" & "Reject" buttons only for service providers */}
       {item.status === "Pending" && item.providerId === user.uid && (
         <View style={styles.actionButtons}>
           <TouchableOpacity
-            style={styles.acceptButton}
+            style={[styles.acceptButton, { backgroundColor: colors.success || "#34d399" }]}
             onPress={() => acceptBooking(item.id)}
           >
             <Text style={styles.acceptText}>Accept</Text>
           </TouchableOpacity>
           <TouchableOpacity
-            style={styles.rejectButton}
+            style={[styles.rejectButton, { backgroundColor: colors.error || "#ff4d4d" }]}
             onPress={() => rejectBooking(item.id)}
           >
             <Text style={styles.rejectText}>Reject</Text>
@@ -169,65 +188,75 @@ const BookingsScreen = ({ route, navigation }) => {
 
   if (loading) {
     return (
-      <View style={styles.loaderContainer}>
-        <ActivityIndicator size="large" color="#4a90e2" />
+      <View style={[styles.loaderContainer, { backgroundColor: colors.background }]}>
+        <ActivityIndicator size="large" color={colors.primary} />
       </View>
     );
   }
 
   return (
-    <View style={styles.container}>
-      <Text style={styles.headerTitle}>Your Bookings</Text>
-      <FlatList
-        data={bookings}
-        keyExtractor={(item) => item.id}
-        renderItem={renderBooking}
-        ListEmptyComponent={<Text style={styles.emptyText}>No bookings found</Text>}
-      />
-      <Navbar navigation={navigation} activeTab="Bookings" />
-    </View>
+    <SafeAreaView style={{ flex: 1, backgroundColor: colors.background }}>
+      <StatusBar backgroundColor={colors.background} barStyle={isDarkMode ? "light-content" : "dark-content"} />
+
+      <View style={{ flex: 1, backgroundColor: colors.background }}>
+        <ScrollView contentContainerStyle={styles.scrollContainer}>
+          <Text style={[styles.headerTitle, { color: colors.primary }]}>Your Bookings</Text>
+
+          {bookings.length === 0 ? (
+            <Text style={[styles.emptyText, { color: colors.text }]}>No bookings found</Text>
+          ) : (
+            bookings.map((item) => renderBooking({ item }))
+          )}
+        </ScrollView>
+
+        <Navbar navigation={navigation} activeTab="Bookings" />
+      </View>
+    </SafeAreaView>
   );
 };
 
 export default BookingsScreen;
 
 const styles = StyleSheet.create({
-  container: {
+  scrollContainer: {
+    flexGrow: 1,
+    paddingBottom: 90,
+    paddingHorizontal: 20,
+    paddingTop: 20,
+  },
+  loaderContainer: {
     flex: 1,
-    backgroundColor: "#f5f5f5",
-    padding: 20,
+    justifyContent: "center",
+    alignItems: "center",
   },
   headerTitle: {
     fontSize: 24,
     fontWeight: "bold",
-    color: "#4a90e2",
-    marginBottom: 15,
+    marginBottom: 20,
   },
   bookingItem: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    backgroundColor: "#fff",
+    borderRadius: 12,
     padding: 15,
-    borderRadius: 10,
-    marginBottom: 10,
+    marginBottom: 15,
     elevation: 3,
+    shadowColor: "#000",
+    shadowOpacity: 0.1,
+    shadowOffset: { width: 0, height: 1 },
+    shadowRadius: 4,
   },
   bookingInfo: {
-    flex: 1,
+    marginBottom: 10,
   },
   serviceText: {
-    fontSize: 16,
+    fontSize: 18,
     fontWeight: "bold",
-    color: "#333",
   },
   providerText: {
     fontSize: 14,
-    color: "#555",
+    marginTop: 5,
   },
   dateText: {
     fontSize: 14,
-    color: "#666",
     marginTop: 5,
   },
   status: {
@@ -248,10 +277,10 @@ const styles = StyleSheet.create({
     color: "blue",
   },
   cancelButton: {
-    backgroundColor: "#ff4d4d",
-    paddingVertical: 6,
-    paddingHorizontal: 12,
-    borderRadius: 5,
+    paddingVertical: 8,
+    paddingHorizontal: 16,
+    borderRadius: 8,
+    alignSelf: "flex-start",
   },
   cancelText: {
     color: "#fff",
@@ -259,26 +288,31 @@ const styles = StyleSheet.create({
   },
   actionButtons: {
     flexDirection: "row",
+    justifyContent: "flex-start",
     gap: 10,
   },
   acceptButton: {
-    backgroundColor: "#34d399",
-    paddingVertical: 6,
-    paddingHorizontal: 12,
-    borderRadius: 5,
+    paddingVertical: 8,
+    paddingHorizontal: 16,
+    borderRadius: 8,
+    marginRight: 10,
   },
   acceptText: {
     color: "#fff",
     fontWeight: "bold",
   },
   rejectButton: {
-    backgroundColor: "#ff4d4d",
-    paddingVertical: 6,
-    paddingHorizontal: 12,
-    borderRadius: 5,
+    paddingVertical: 8,
+    paddingHorizontal: 16,
+    borderRadius: 8,
   },
   rejectText: {
     color: "#fff",
     fontWeight: "bold",
+  },
+  emptyText: {
+    fontSize: 16,
+    textAlign: "center",
+    marginTop: 100,
   },
 });

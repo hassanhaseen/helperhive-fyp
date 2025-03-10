@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useContext } from "react";
 import {
   View,
   Text,
@@ -6,20 +6,24 @@ import {
   TouchableOpacity,
   StyleSheet,
   ScrollView,
-  Alert,
   ActivityIndicator,
   SafeAreaView,
   StatusBar,
   Image,
-  Platform,
+  Modal,
+  KeyboardAvoidingView,
+  Platform
 } from "react-native";
 import Icon from "react-native-vector-icons/Ionicons";
-import DateTimePicker from "@react-native-community/datetimepicker";
 import * as ImagePicker from "expo-image-picker";
 import { auth, db } from "../firebase";
 import { doc, setDoc, getDoc } from "firebase/firestore";
+import { ThemeContext } from "../context/ThemeContext";
+import Toast from 'react-native-toast-message';
 
 const FillProfilePage = ({ navigation }) => {
+  const { colors, isDarkMode } = useContext(ThemeContext);
+
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [phone, setPhone] = useState("");
@@ -30,11 +34,10 @@ const FillProfilePage = ({ navigation }) => {
   const [experience, setExperience] = useState("");
   const [address, setAddress] = useState("");
   const [city, setCity] = useState("");
-  const [country, setCountry] = useState("");
-  const [dateOfBirth, setDateOfBirth] = useState(new Date());
-  const [showDatePicker, setShowDatePicker] = useState(false);
+  const [dateOfBirth, setDateOfBirth] = useState("");
   const [loading, setLoading] = useState(false);
   const [requestStatus, setRequestStatus] = useState("");
+  const [showModal, setShowModal] = useState(false);
 
   useEffect(() => {
     const currentUser = auth.currentUser;
@@ -60,7 +63,11 @@ const FillProfilePage = ({ navigation }) => {
   const pickImage = async (setImage) => {
     const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
     if (status !== "granted") {
-      Alert.alert("Permission Denied", "You need to allow access to your gallery.");
+      Toast.show({
+        type: "error",
+        text1: "Permission Denied",
+        text2: "You need to allow gallery access."
+      });
       return;
     }
 
@@ -72,28 +79,116 @@ const FillProfilePage = ({ navigation }) => {
 
     if (!result.canceled && result.assets.length > 0) {
       setImage(result.assets[0].uri);
+      Toast.show({
+        type: "success",
+        text1: "Image Uploaded"
+      });
     }
   };
 
-  const onChangeDate = (event, selectedDate) => {
-    setShowDatePicker(false);
-    if (selectedDate) setDateOfBirth(selectedDate);
+  const formatDOBInput = (input) => {
+    const cleaned = input.replace(/[^\d]/g, "");
+    let formatted = "";
+    if (cleaned.length <= 2) {
+      formatted = cleaned;
+    } else if (cleaned.length <= 4) {
+      formatted = `${cleaned.slice(0, 2)}-${cleaned.slice(2)}`;
+    } else {
+      formatted = `${cleaned.slice(0, 2)}-${cleaned.slice(2, 4)}-${cleaned.slice(4, 8)}`;
+    }
+    setDateOfBirth(formatted);
+  };
+
+  const formatCNICInput = (input) => {
+    const cleaned = input.replace(/[^\d]/g, "");
+    let formatted = "";
+    if (cleaned.length <= 5) {
+      formatted = cleaned;
+    } else if (cleaned.length <= 12) {
+      formatted = `${cleaned.slice(0, 5)}-${cleaned.slice(5)}`;
+    } else {
+      formatted = `${cleaned.slice(0, 5)}-${cleaned.slice(5, 12)}-${cleaned.slice(12, 13)}`;
+    }
+    setCnicNumber(formatted);
+  };
+
+  const validateDate = (dob) => {
+    const regex = /^(0[1-9]|[12][0-9]|3[01])-(0[1-9]|1[012])-(19|20)\d\d$/;
+    return regex.test(dob);
+  };
+
+  const validateEmail = (email) => {
+    const regex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    return regex.test(email);
+  };
+
+  const validateForm = () => {
+    if (!name || !email || !cnicNumber || !phone || !experience || !address || !city || !dateOfBirth) {
+      Toast.show({
+        type: "error",
+        text1: "Missing Fields",
+        text2: "Please fill all required fields."
+      });
+      return false;
+    }
+
+    if (!validateEmail(email)) {
+      Toast.show({
+        type: "error",
+        text1: "Invalid Email",
+        text2: "Please enter a valid email address."
+      });
+      return false;
+    }
+
+    if (!profileImage || !cnicFront || !cnicBack) {
+      Toast.show({
+        type: "error",
+        text1: "Missing Images",
+        text2: "Please upload Profile, CNIC Front and CNIC Back images."
+      });
+      return false;
+    }
+
+    if (!validateDate(dateOfBirth)) {
+      Toast.show({
+        type: "error",
+        text1: "Invalid Date",
+        text2: "Enter Date of Birth in DD-MM-YYYY format."
+      });
+      return false;
+    }
+
+    if (cnicNumber.length !== 15) {
+      Toast.show({
+        type: "error",
+        text1: "Invalid CNIC",
+        text2: "Enter a valid CNIC number (XXXXX-XXXXXXX-X)."
+      });
+      return false;
+    }
+
+    return true;
   };
 
   const saveProfileData = async () => {
-    if (!name || !email || !cnicNumber || !phone || !experience || !address || !city || !country || !dateOfBirth) {
-      Alert.alert("Validation Error", "Please fill all required fields.");
-      return;
-    }
+    if (!validateForm()) return;
 
     const currentUser = auth.currentUser;
     if (!currentUser) {
-      Alert.alert("Error", "You must be signed in to save your profile.");
+      Toast.show({
+        type: "error",
+        text1: "User not logged in"
+      });
       return;
     }
 
     if (requestStatus === "Pending") {
-      Alert.alert("Error", "You already have a pending request.");
+      Toast.show({
+        type: "info",
+        text1: "Request Pending",
+        text2: "You already have a pending request."
+      });
       return;
     }
 
@@ -101,168 +196,256 @@ const FillProfilePage = ({ navigation }) => {
     const userId = currentUser.uid;
 
     try {
-      
       await setDoc(doc(db, "users", userId), {
         name,
         email,
         phone,
         address,
-        //dateOfBirth: date.toISOString(),
+        dateOfBirth,
         cnicNumber,
         cnicFront,
         cnicBack,
         profileImage,
-        isServiceProvider: false, // Require admin approval
+        isServiceProvider: false,
         requestStatus: "Pending",
         updatedAt: new Date(),
       });
 
-      Alert.alert("Success", "Your request has been submitted and is pending admin approval!");
-      navigation.navigate("Profile");
+      Toast.show({
+        type: "success",
+        text1: "Request Submitted",
+        text2: "Pending Admin Approval!"
+      });
+
+      setShowModal(true);
+
     } catch (error) {
       console.error("Error saving profile:", error);
-      Alert.alert("Error", "Failed to submit request. Please try again.");
+      Toast.show({
+        type: "error",
+        text1: "Submission Failed",
+        text2: "Try again later."
+      });
     } finally {
       setLoading(false);
     }
   };
 
   return (
-    <SafeAreaView style={styles.safeArea}>
-      <StatusBar backgroundColor="#005bea" barStyle="light-content" />
-      <ScrollView contentContainerStyle={styles.scrollContent}>
-        <Text style={styles.title}>Become a Service Provider</Text>
+    <SafeAreaView style={{ flex: 1, backgroundColor: colors.background }}>
+      <StatusBar backgroundColor={colors.background} barStyle={isDarkMode ? "light-content" : "dark-content"} />
+      <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : "height"} style={{ flex: 1 }}>
+        <ScrollView contentContainerStyle={styles.scrollContainer}>
+          <Text style={[styles.title, { color: colors.text }]}>Become a Service Provider</Text>
 
-        <View style={styles.profileContainer}>
-          <TouchableOpacity onPress={() => pickImage(setProfileImage)}>
-            <Image source={{ uri: profileImage || "https://cdn-icons-png.flaticon.com/512/9187/9187604.png" }} style={styles.profileImage} />
+          {/* Profile Image */}
+          <TouchableOpacity style={styles.profileContainer} onPress={() => pickImage(setProfileImage)}>
+            <Image
+              source={{
+                uri: profileImage || "https://cdn-icons-png.flaticon.com/512/9187/9187604.png",
+              }}
+              style={styles.profileImage}
+            />
+            <View style={styles.editIconContainer}>
+              <Icon name="camera-outline" size={18} color="#fff" />
+            </View>
           </TouchableOpacity>
-        </View>
 
-        <TextInput placeholder="Full Name*" value={name} onChangeText={setName} style={styles.input} />
-        <TextInput placeholder="Email*" value={email} onChangeText={setEmail} style={styles.input} keyboardType="email-address" />
-        <TextInput placeholder="Phone Number*" value={phone} onChangeText={setPhone} style={styles.input} keyboardType="phone-pad" />
-        <TextInput placeholder="CNIC Number*" value={cnicNumber} onChangeText={setCnicNumber} style={styles.input} keyboardType="numeric" />
+          <View style={styles.form}>
+            {/* Form Inputs */}
+            {[
+              { value: name, setter: setName, placeholder: "Full Name*", keyboardType: "default" },
+              { value: email, setter: setEmail, placeholder: "Email*", keyboardType: "email-address" },
+              { value: phone, setter: setPhone, placeholder: "Phone Number*", keyboardType: "phone-pad" },
+              { value: experience, setter: setExperience, placeholder: "Experience (Years)*", keyboardType: "numeric" },
+              { value: address, setter: setAddress, placeholder: "Address*", keyboardType: "default" },
+              { value: city, setter: setCity, placeholder: "City*", keyboardType: "default" },
+            ].map((field, index) => (
+              <TextInput
+                key={index}
+                placeholder={field.placeholder}
+                placeholderTextColor={colors.placeholder || (isDarkMode ? "#888" : "#888")}
+                value={field.value}
+                onChangeText={field.setter}
+                keyboardType={field.keyboardType}
+                style={[
+                  styles.input,
+                  { backgroundColor: colors.card, color: colors.text, borderColor: colors.border }
+                ]}
+              />
+            ))}
 
-        <TouchableOpacity style={[styles.input, styles.datePicker]} onPress={() => setShowDatePicker(true)}>
-          <Text>{dateOfBirth.toDateString()}</Text>
-          <Icon name="calendar-outline" size={20} color="#4a90e2" />
-        </TouchableOpacity>
-        {showDatePicker && (
-          <DateTimePicker value={dateOfBirth} mode="date" display={Platform.OS === "ios" ? "spinner" : "default"} onChange={onChangeDate} />
-        )}
+            {/* CNIC */}
+            <TextInput
+              placeholder="CNIC Number (XXXXX-XXXXXXX-X)*"
+              placeholderTextColor={colors.placeholder || (isDarkMode ? "#888" : "#888")}
+              value={cnicNumber}
+              onChangeText={formatCNICInput}
+              keyboardType="numeric"
+              maxLength={15}
+              style={[
+                styles.input,
+                { backgroundColor: colors.card, color: colors.text, borderColor: colors.border }
+              ]}
+            />
 
-        <TextInput placeholder="Experience (Years)*" value={experience} onChangeText={setExperience} style={styles.input} keyboardType="numeric" />
-        <TextInput placeholder="Address*" value={address} onChangeText={setAddress} style={styles.input} />
-        <TextInput placeholder="City*" value={city} onChangeText={setCity} style={styles.input} />
-        <TextInput placeholder="Country*" value={country} onChangeText={setCountry} style={styles.input} />
+            {/* Date of Birth */}
+            <TextInput
+              placeholder="Date of Birth (DD-MM-YYYY)*"
+              placeholderTextColor={colors.placeholder || (isDarkMode ? "#888" : "#888")}
+              value={dateOfBirth}
+              onChangeText={formatDOBInput}
+              keyboardType="numeric"
+              maxLength={10}
+              style={[
+                styles.input,
+                { backgroundColor: colors.card, color: colors.text, borderColor: colors.border }
+              ]}
+            />
 
-        <TouchableOpacity style={styles.uploadButton} onPress={() => pickImage(setCnicFront)}>
-          <Text style={styles.uploadText}>{cnicFront ? "CNIC Front Uploaded ✅" : "Upload CNIC Front"}</Text>
-        </TouchableOpacity>
+            {/* CNIC Upload Buttons */}
+            <TouchableOpacity
+              style={[styles.uploadButton, { backgroundColor: colors.primary }]}
+              onPress={() => pickImage(setCnicFront)}
+            >
+              <Text style={styles.uploadText}>{cnicFront ? "CNIC Front Uploaded ✅" : "Upload CNIC Front"}</Text>
+            </TouchableOpacity>
 
-        <TouchableOpacity style={styles.uploadButton} onPress={() => pickImage(setCnicBack)}>
-          <Text style={styles.uploadText}>{cnicBack ? "CNIC Back Uploaded ✅" : "Upload CNIC Back"}</Text>
-        </TouchableOpacity>
+            <TouchableOpacity
+              style={[styles.uploadButton, { backgroundColor: colors.primary }]}
+              onPress={() => pickImage(setCnicBack)}
+            >
+              <Text style={styles.uploadText}>{cnicBack ? "CNIC Back Uploaded ✅" : "Upload CNIC Back"}</Text>
+            </TouchableOpacity>
 
-        <TouchableOpacity style={styles.saveButton} onPress={saveProfileData} disabled={loading}>
-          {loading ? <ActivityIndicator color="#fff" /> : <Text style={styles.saveText}>Submit Request</Text>}
-        </TouchableOpacity>
-      </ScrollView>
+            {/* Submit */}
+            <TouchableOpacity
+              style={[styles.submitButton, { backgroundColor: colors.primary }]}
+              onPress={saveProfileData}
+              disabled={loading}
+            >
+              {loading ? (
+                <ActivityIndicator color="#fff" />
+              ) : (
+                <Text style={styles.submitText}>Submit Request</Text>
+              )}
+            </TouchableOpacity>
+          </View>
+        </ScrollView>
+
+        {/* Success Modal */}
+        <Modal visible={showModal} transparent={true} animationType="fade">
+          <View style={styles.modalContainer}>
+            <View style={[styles.modalContent, { backgroundColor: colors.card }]}>
+              <Icon name="checkmark-circle-outline" size={60} color={colors.primary} />
+              <Text style={[styles.modalText, { color: colors.text }]}>
+                Your request has been submitted successfully!
+              </Text>
+              <TouchableOpacity
+                style={[styles.modalButton, { backgroundColor: colors.primary }]}
+                onPress={() => {
+                  setShowModal(false);
+                  navigation.navigate("Profile");
+                }}
+              >
+                <Text style={styles.modalButtonText}>Go to Profile</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </Modal>
+      </KeyboardAvoidingView>
+      <Toast />
     </SafeAreaView>
   );
 };
 
 export default FillProfilePage;
 
-
 const styles = StyleSheet.create({
-  safeArea: {
-    flex: 1,
-    backgroundColor: "#005bea",
+  scrollContainer: {
+    padding: 20,
   },
-  container: {
-    flex: 1,
-    paddingHorizontal: 20,
-    backgroundColor: "#f5f5f5",
-  },
-  scrollContent: {
-    paddingBottom: 20,
-  },
-  header: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    marginBottom: 20,
-  },
-  headerTitle: {
-    fontSize: 20,
-    color: "#4a90e2",
+  title: {
+    fontSize: 22,
     fontWeight: "bold",
+    marginBottom: 20,
+    textAlign: "center",
   },
   profileContainer: {
     alignItems: "center",
-    marginBottom: 30,
-  },
-  profileImage: {
-    width: 100,
-    height: 100,
-    borderRadius: 50,
-    backgroundColor: "#ccc",
-  },
-  editButton: {
-    position: "absolute",
-    bottom: 0,
-    right: 0,
-    backgroundColor: "#4a90e2",
-    borderRadius: 15,
-    padding: 5,
-  },
-  inputContainer: {
+    justifyContent: "center",
     marginBottom: 20,
   },
+  profileImage: {
+    width: 120,
+    height: 120,
+    borderRadius: 60,
+    backgroundColor: "#ccc",
+  },
+  editIconContainer: {
+    position: "absolute",
+    bottom: 5,
+    right: 10,
+    backgroundColor: "#4a90e2",
+    padding: 5,
+    borderRadius: 15,
+  },
+  form: {
+    marginTop: 10,
+  },
   input: {
-    backgroundColor: "#e6e9ee",
-    color: "#333",
-    borderRadius: 10,
-    padding: 15,
+    borderRadius: 12,
+    paddingVertical: 15,
+    paddingHorizontal: 20,
     marginBottom: 15,
-  },
-  rowInput: {
-    flexDirection: "row",
-    alignItems: "center",
-  },
-  phoneInput: {
-    flex: 1,
-  },  
-  datePicker: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-  },
-  dateText: {
-    color: "#aaa",
+    fontSize: 14,
+    borderWidth: 1,
   },
   uploadButton: {
-    backgroundColor: "#4a90e2",
-    borderRadius: 10,
+    borderRadius: 12,
     paddingVertical: 15,
     alignItems: "center",
     marginBottom: 15,
   },
   uploadText: {
     color: "#fff",
-    fontSize: 14,
+    fontWeight: "500",
   },
-  saveButton: {
-    backgroundColor: "#4a90e2",
-    borderRadius: 10,
-    paddingVertical: 15,
+  submitButton: {
+    borderRadius: 12,
+    paddingVertical: 18,
+    alignItems: "center",
+    marginTop: 10,
+  },
+  submitText: {
+    color: "#fff",
+    fontWeight: "bold",
+    fontSize: 16,
+  },
+  modalContainer: {
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
+    backgroundColor: "rgba(0,0,0,0.5)",
+  },
+  modalContent: {
+    width: "80%",
+    borderRadius: 12,
+    padding: 20,
     alignItems: "center",
   },
-  saveText: {
-    color: "#fff",
+  modalText: {
     fontSize: 16,
+    textAlign: "center",
+    marginVertical: 15,
+  },
+  modalButton: {
+    paddingVertical: 12,
+    paddingHorizontal: 20,
+    borderRadius: 8,
+  },
+  modalButtonText: {
+    color: "#fff",
     fontWeight: "bold",
   },
 });

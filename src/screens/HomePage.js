@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useContext } from "react";
 import {
   View,
   ScrollView,
@@ -9,14 +9,20 @@ import {
   TouchableOpacity,
   SafeAreaView,
   ActivityIndicator,
+  StatusBar,
 } from "react-native";
-import { StatusBar } from "react-native";
 import Navbar from "./navbar";
 import Icon from "react-native-vector-icons/Ionicons";
 import { auth, db } from "../firebase";
 import { collection, getDocs, doc, getDoc } from "firebase/firestore";
+import { UserContext } from "../context/UserContext";
+import { ThemeContext } from "../context/ThemeContext";
+import Toast from 'react-native-toast-message';
 
 const HomePage = ({ navigation }) => {
+  const { user } = useContext(UserContext);
+  const { colors, isDarkMode } = useContext(ThemeContext);
+
   const [services, setServices] = useState([]);
   const [filteredServices, setFilteredServices] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -24,6 +30,19 @@ const HomePage = ({ navigation }) => {
   const [userImage, setUserImage] = useState("");
   const [searchQuery, setSearchQuery] = useState("");
 
+  // Redirect to SignIn if not authenticated
+  useEffect(() => {
+    if (!user) {
+      Toast.show({
+        type: 'info',
+        text1: 'Session Expired',
+        text2: 'Please log in again.',
+      });
+      navigation.navigate('SignIn');
+    }
+  }, [user]);
+
+  // Fetch user details
   useEffect(() => {
     const fetchUserDetails = async () => {
       const currentUser = auth.currentUser;
@@ -41,9 +60,11 @@ const HomePage = ({ navigation }) => {
         }
       }
     };
+
     fetchUserDetails();
   }, []);
 
+  // Fetch services
   useEffect(() => {
     const fetchServices = async () => {
       try {
@@ -51,19 +72,36 @@ const HomePage = ({ navigation }) => {
         const servicesSnapshot = await getDocs(servicesCollection);
         const servicesList = [];
 
-        for (const serviceDoc of servicesSnapshot.docs) {
+        const userDocPromises = servicesSnapshot.docs.map(serviceDoc => {
           const serviceData = serviceDoc.data();
-          const userDoc = await getDoc(doc(db, "users", serviceData.userId));
+          return getDoc(doc(db, "users", serviceData.userId)).then(userDoc => ({
+            serviceDoc,
+            serviceData,
+            userDoc
+          }));
+        });
 
-          if (userDoc.exists() && userDoc.data().isServiceProvider && userDoc.data().requestStatus === "Approved") {
+        const serviceUserData = await Promise.all(userDocPromises);
+
+        serviceUserData.forEach(({ serviceDoc, serviceData, userDoc }) => {
+          if (
+            userDoc.exists() &&
+            userDoc.data().isServiceProvider &&
+            userDoc.data().requestStatus === "Approved"
+          ) {
             servicesList.push({ id: serviceDoc.id, ...serviceData });
           }
-        }
+        });
 
         setServices(servicesList);
         setFilteredServices(servicesList);
       } catch (error) {
         console.error("Error fetching services:", error);
+        Toast.show({
+          type: 'error',
+          text1: 'Error',
+          text2: 'Failed to fetch services.',
+        });
       } finally {
         setLoading(false);
       }
@@ -74,6 +112,7 @@ const HomePage = ({ navigation }) => {
 
   const handleSearch = (query) => {
     setSearchQuery(query);
+
     if (query.trim() === "") {
       setFilteredServices(services);
     } else {
@@ -86,17 +125,20 @@ const HomePage = ({ navigation }) => {
 
   if (loading) {
     return (
-      <View style={styles.loaderContainer}>
-        <ActivityIndicator size="large" color="#4a90e2" />
+      <View style={[styles.loaderContainer, { backgroundColor: colors.background }]}>
+        <ActivityIndicator size="large" color={colors.primary} />
+        <Text style={[styles.loadingText, { color: colors.primary }]}>Loading Services...</Text>
       </View>
     );
   }
 
   return (
-    <SafeAreaView style={styles.safeArea}>
-      <StatusBar backgroundColor="#005bea" barStyle="light-content" />
-      <View style={styles.container}>
+    <SafeAreaView style={{ flex: 1, backgroundColor: colors.background }}>
+      <StatusBar backgroundColor={colors.background} barStyle={isDarkMode ? "light-content" : "dark-content"} />
+
+      <View style={{ flex: 1, backgroundColor: colors.background }}>
         <ScrollView>
+          {/* Header */}
           <View style={styles.header}>
             <View style={styles.profileContainer}>
               <Image
@@ -107,63 +149,58 @@ const HomePage = ({ navigation }) => {
                 }}
                 style={styles.profileImage}
               />
-              <Text style={styles.greetingText}>
-                Welcome Back, <Text style={styles.userName}>{userName}</Text>! 👋
+              <Text style={[styles.greetingText, { color: colors.text }]}>
+                Welcome Back, <Text style={{ color: colors.primary }}>{userName}</Text>! 👋
               </Text>
             </View>
           </View>
 
-          <View style={styles.searchBar}>
+          {/* Search */}
+          <View style={[styles.searchBar, { backgroundColor: isDarkMode ? colors.card : "#e6e9ee" }]}>
             <TextInput
               placeholder="Search by category"
-              placeholderTextColor="#aaa"
-              style={styles.searchInput}
+              placeholderTextColor={isDarkMode ? "#888" : "#aaa"}
+              style={[styles.searchInput, { color: colors.text }]}
               value={searchQuery}
               onChangeText={handleSearch}
             />
-            <Icon name="search-outline" size={20} color="#fff" />
+            <Icon name="search-outline" size={20} color={colors.text} />
           </View>
 
+          {/* Services */}
           <View style={styles.section}>
-            <Text style={styles.sectionTitle}>Available Services</Text>
+            <Text style={[styles.sectionTitle, { color: colors.text }]}>Available Services</Text>
           </View>
 
-          <ScrollView
-            horizontal
-            showsHorizontalScrollIndicator={false}
-            style={styles.serviceList}
-          >
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.serviceList}>
             {filteredServices.map((service) => (
               <TouchableOpacity
                 key={service.id}
-                style={styles.serviceCard}
-                onPress={() =>
-                  navigation.navigate("ServiceDetails", { service })
-                }
+                style={[styles.serviceCard, { backgroundColor: colors.card }]}
+                onPress={() => navigation.navigate("ServiceDetails", { service })}
               >
-                <Text style={styles.serviceName}>{service.serviceName}</Text>
-                <Text style={styles.serviceCategory}>{service.category}</Text>
-                <Text style={styles.serviceDescription}>
-                  {service.description}
-                </Text>
-                <Text style={styles.servicePrice}>{service.priceRange}</Text>
+                <Text style={[styles.serviceName, { color: colors.text }]}>{service.serviceName}</Text>
+                <Text style={[styles.serviceCategory, { color: colors.text }]}>{service.category}</Text>
+                <Text style={[styles.serviceDescription, { color: colors.text }]}>{service.description}</Text>
+                <Text style={[styles.servicePrice, { color: colors.primary }]}>{service.priceRange}</Text>
               </TouchableOpacity>
             ))}
           </ScrollView>
 
           {filteredServices.length === 0 && (
-            <Text style={styles.noResultsText}>
+            <Text style={[styles.noResultsText, { color: colors.text }]}>
               No services found for "{searchQuery}".
             </Text>
           )}
 
-          {/* Services Section */}
+          {/* Categories */}
           <View style={styles.section00}>
-            <Text style={styles.sectionTitle00}>Service</Text>
+            <Text style={[styles.sectionTitle00, { color: colors.text }]}>Service Categories</Text>
             <TouchableOpacity>
-              <Text style={styles.seeAll00}>See All</Text>
+              <Text style={{ color: colors.primary }}>See All</Text>
             </TouchableOpacity>
           </View>
+
           <View style={styles.serviceGrid00}>
             {[
               { name: "Cleaning", icon: "leaf-outline", color: "#8b5cf6" },
@@ -175,43 +212,86 @@ const HomePage = ({ navigation }) => {
               { name: "Shifting", icon: "cube-outline", color: "#f472b6" },
               { name: "More", icon: "ellipsis-horizontal-outline", color: "#c084fc" },
             ].map((service, index) => (
-              <TouchableOpacity key={index} style={styles.serviceItem00}>
+              <TouchableOpacity
+                key={index}
+                style={styles.serviceItem00}
+                onPress={() =>
+                  navigation.navigate("ServiceDetails", { serviceType: service.name })
+                }
+              >
                 <View style={[styles.serviceIcon00, { backgroundColor: service.color }]}>
                   <Icon name={service.icon} size={24} color="#fff" />
                 </View>
-                <Text style={styles.serviceText00}>{service.name}</Text>
+                <Text style={[styles.serviceText00, { color: colors.text }]}>{service.name}</Text>
               </TouchableOpacity>
             ))}
           </View>
 
           {/* Special Offers */}
           <View style={styles.section00}>
-            <Text style={styles.sectionTitle00}>Special Offers</Text>
+            <Text style={[styles.sectionTitle00, { color: colors.text }]}>Special Offers</Text>
             <TouchableOpacity onPress={() => navigation.navigate("SpecialOffers")}>
-              <Text style={styles.seeAll00}>See All</Text>
+              <Text style={{ color: colors.primary }}>See All</Text>
             </TouchableOpacity>
           </View>
-          <ScrollView
-            horizontal
-            showsHorizontalScrollIndicator={false}
-            style={styles.offerContainer}
-          >
-            {[1, 2, 3].map((item, index) => (
+
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.offerContainer}>
+            {[1].map((item, index) => (
               <TouchableOpacity
                 key={index}
-                style={styles.offerCard}
+                style={[styles.offerCard, { backgroundColor: "#ff6b6b" }]}
                 onPress={() => navigation.navigate("SpecialOffers")}
               >
                 <Text style={styles.offerText}>30%</Text>
                 <Text style={styles.offerSubtext}>Today's Special!</Text>
                 <Text style={styles.offerDesc}>
-                  Get discount for every order, only valid for today
+                  Get discount for every order, only valid for today!
+                </Text>
+              </TouchableOpacity>
+            ))}
+            {[2].map((item, index) => (
+              <TouchableOpacity
+                key={index}
+                style={[styles.offerCard, { backgroundColor: "#fbbf24" }]}
+                onPress={() => navigation.navigate("SpecialOffers")}
+              >
+                <Text style={styles.offerText}>25%</Text>
+                <Text style={styles.offerSubtext}>Friday Special!</Text>
+                <Text style={styles.offerDesc}>
+                  Get discount for every order, only valid for today!
+                </Text>
+              </TouchableOpacity>
+            ))}
+            {[3].map((item, index) => (
+              <TouchableOpacity
+                key={index}
+                style={[styles.offerCard, { backgroundColor: "#34d399" }]}
+                onPress={() => navigation.navigate("SpecialOffers")}
+              >
+                <Text style={styles.offerText}>35%</Text>
+                <Text style={styles.offerSubtext}>Weekend Special!</Text>
+                <Text style={styles.offerDesc}>
+                  Get discount for every order, only valid for today!
+                </Text>
+              </TouchableOpacity>
+            ))}
+            {[4].map((item, index) => (
+              <TouchableOpacity
+                key={index}
+                style={[styles.offerCard, { backgroundColor: "#4a90e2" }]}
+                onPress={() => navigation.navigate("SpecialOffers")}
+              >
+                <Text style={styles.offerText}>35%</Text>
+                <Text style={styles.offerSubtext}>New Promo!</Text>
+                <Text style={styles.offerDesc}>
+                  Get discount for every order, only valid for today!
                 </Text>
               </TouchableOpacity>
             ))}
           </ScrollView>
         </ScrollView>
 
+        {/* Bottom Navbar */}
         <Navbar navigation={navigation} activeTab="HomePage" />
       </View>
     </SafeAreaView>
@@ -221,18 +301,14 @@ const HomePage = ({ navigation }) => {
 export default HomePage;
 
 const styles = StyleSheet.create({
-  safeArea: {
-    flex: 1,
-    backgroundColor: "#005bea",
-  },
-  container: {
-    flex: 1,
-    backgroundColor: "#f5f5f5",
-  },
   loaderContainer: {
     flex: 1,
     justifyContent: "center",
     alignItems: "center",
+  },
+  loadingText: {
+    marginTop: 10,
+    fontSize: 16,
   },
   header: {
     flexDirection: "row",
@@ -251,17 +327,11 @@ const styles = StyleSheet.create({
     borderRadius: 20,
   },
   greetingText: {
-    color: "#333",
     marginLeft: 10,
     fontSize: 16,
   },
-  userName: {
-    fontWeight: "bold",
-    color: "#4a90e2",
-  },
   searchBar: {
     flexDirection: "row",
-    backgroundColor: "#e6e9ee",
     marginHorizontal: 20,
     borderRadius: 10,
     padding: 10,
@@ -270,7 +340,7 @@ const styles = StyleSheet.create({
   },
   searchInput: {
     flex: 1,
-    color: "#333",
+    marginRight: 10,
   },
   section: {
     flexDirection: "row",
@@ -279,7 +349,6 @@ const styles = StyleSheet.create({
     marginVertical: 10,
   },
   sectionTitle: {
-    color: "#333",
     fontSize: 18,
     fontWeight: "bold",
   },
@@ -288,43 +357,32 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
   },
   serviceCard: {
-    backgroundColor: "#fff",
     borderRadius: 10,
     padding: 20,
     marginRight: 15,
     width: 250,
     alignItems: "flex-start",
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.2,
-    shadowRadius: 5,
     elevation: 3,
   },
   serviceName: {
-    color: "#333",
     fontSize: 18,
     fontWeight: "bold",
     marginBottom: 5,
   },
   serviceCategory: {
-    color: "#555",
     marginBottom: 5,
   },
   serviceDescription: {
-    color: "#777",
     marginBottom: 10,
   },
   servicePrice: {
-    color: "#4a90e2",
     fontWeight: "bold",
   },
   noResultsText: {
-    color: "#555",
     textAlign: "center",
     marginTop: 20,
     fontSize: 16,
   },
-/*Service Categories Style*/
   section00: {
     flexDirection: "row",
     justifyContent: "space-between",
@@ -332,12 +390,8 @@ const styles = StyleSheet.create({
     marginVertical: 10,
   },
   sectionTitle00: {
-    color: "#000000",
     fontSize: 18,
     fontWeight: "bold",
-  },
-  seeAll00: {
-    color: "#005bea",
   },
   serviceGrid00: {
     flexDirection: "row",
@@ -359,21 +413,15 @@ const styles = StyleSheet.create({
   },
   serviceText00: {
     fontSize: 14,
-    color: '#000', // Set text color to black
-    fontWeight: 'bold', // Make the text bold
-    textAlign: 'center', // Optional: Center-align text
-    marginTop: 8, // Optional: Add spacing if needed
+    fontWeight: "bold",
+    textAlign: "center",
+    marginTop: 8,
   },
-
-
-  /*Special Offers Style*/
   offerContainer: {
     flexDirection: "row",
     paddingHorizontal: 20,
   },
   offerCard: {
-    //add gradient background
-    backgroundColor: "#4a90e2",
     borderRadius: 10,
     padding: 20,
     marginRight: 15,

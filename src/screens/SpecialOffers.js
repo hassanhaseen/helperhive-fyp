@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useContext } from "react";
 import {
   View,
   Text,
@@ -9,8 +9,12 @@ import {
   StatusBar,
 } from "react-native";
 import Icon from "react-native-vector-icons/Ionicons";
+import { ThemeContext } from "../context/ThemeContext"; // Global theme context
+import Toast from 'react-native-toast-message';
 
 const SpecialOffers = ({ navigation }) => {
+  const { colors, isDarkMode } = useContext(ThemeContext);
+
   const offers = [
     {
       id: 1,
@@ -43,33 +47,49 @@ const SpecialOffers = ({ navigation }) => {
   ];
 
   return (
-    <SafeAreaView style={styles.safeArea}>
-      <StatusBar backgroundColor="#005bea" barStyle="light-content" />
-      <View style={styles.container}>
+    <SafeAreaView style={[styles.safeArea, { backgroundColor: colors.background }]}>
+      <StatusBar
+        backgroundColor={colors.primary}
+        barStyle={isDarkMode ? "light-content" : "dark-content"}
+      />
+
+      <View style={[styles.container, { backgroundColor: colors.background }]}>
         {/* Header Section */}
         <View style={styles.header}>
           <TouchableOpacity onPress={() => navigation.goBack()}>
-            <Icon name="arrow-back-outline" size={24} color="#fff" />
+            <Icon name="arrow-back-outline" size={28} color={colors.text} />
           </TouchableOpacity>
-          <Text style={styles.headerTitle}>Special Offers</Text>
-          <Icon name="ellipsis-horizontal-outline" size={24} color="#fff" />
+          <Text style={[styles.headerTitle, { color: colors.text }]}>Special Offers</Text>
+          <Icon name="gift-outline" size={28} color={colors.primary} />
         </View>
 
         {/* Offers List */}
-        <ScrollView>
-          {offers.map((offer) => (
-            <View
-              key={offer.id}
-              style={[
-                styles.offerCard,
-                { backgroundColor: offer.backgroundColor },
-              ]}
-            >
-              <Text style={styles.discount}>{offer.discount}</Text>
-              <Text style={styles.offerTitle}>{offer.title}</Text>
-              <Text style={styles.offerDescription}>{offer.description}</Text>
-            </View>
-          ))}
+        <ScrollView showsVerticalScrollIndicator={false}>
+          {offers.length === 0 ? (
+            Toast.show({
+              type: 'info',
+              text1: 'No Offers Available',
+              text2: 'Please check back later.',
+            })
+          ) : (
+            offers.map((offer) => (
+              <TouchableOpacity key={offer.id} activeOpacity={0.9}>
+                <View
+                  style={[
+                    styles.offerCard,
+                    {
+                      backgroundColor: offer.backgroundColor,
+                      borderColor: isDarkMode ? "#333" : "#ddd",
+                    },
+                  ]}
+                >
+                  <Text style={styles.discount}>{offer.discount}</Text>
+                  <Text style={styles.offerTitle}>{offer.title}</Text>
+                  <Text style={styles.offerDescription}>{offer.description}</Text>
+                </View>
+              </TouchableOpacity>
+            ))
+          )}
         </ScrollView>
       </View>
     </SafeAreaView>
@@ -81,44 +101,43 @@ export default SpecialOffers;
 const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
-    backgroundColor: "#005bea",
   },
   container: {
     flex: 1,
     paddingHorizontal: 20,
-    backgroundColor: "#f5f5f5",
+    paddingTop: 10,
   },
   header: {
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
-    marginVertical: 10,
+    marginBottom: 20,
   },
   headerTitle: {
-    fontSize: 22,
-    color: "#4a90e2",
+    fontSize: 24,
     fontWeight: "bold",
   },
   offerCard: {
-    borderRadius: 12,
-    padding: 20,
+    borderRadius: 16,
+    padding: 25,
     marginBottom: 15,
+    elevation: 4,
     shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.2,
-    shadowRadius: 4,
-    elevation: 3,
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.1,
+    shadowRadius: 5,
   },
   discount: {
     color: "#fff",
-    fontSize: 26,
+    fontSize: 28,
     fontWeight: "bold",
+    marginBottom: 8,
   },
   offerTitle: {
     color: "#fff",
     fontSize: 20,
-    marginVertical: 5,
     fontWeight: "600",
+    marginBottom: 6,
   },
   offerDescription: {
     color: "#f0f0f0",

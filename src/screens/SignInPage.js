@@ -1,71 +1,76 @@
 import React, { useState, useContext } from 'react';
-import { 
-  StyleSheet, 
-  TextInput, 
-  TouchableOpacity, 
-  Text, 
-  View, 
-  Alert, 
-  ActivityIndicator 
+import {
+  StyleSheet,
+  TextInput,
+  TouchableOpacity,
+  Text,
+  View,
+  ActivityIndicator,
 } from 'react-native';
-import { getAuth, signInWithEmailAndPassword, sendEmailVerification } from 'firebase/auth';
-import { getFirestore, doc, getDoc, updateDoc } from 'firebase/firestore';
+import { getAuth, signInWithEmailAndPassword } from 'firebase/auth';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Image } from 'react-native-animatable';
-import { CommonActions } from '@react-navigation/native'; // Import navigation reset action
+import { CommonActions } from '@react-navigation/native';
+import Toast from 'react-native-toast-message'; // Toast for notifications
+
 import logo from '../assets/logo.png';
 import { UserContext } from '../context/UserContext';
 
 const SignInPage = ({ navigation }) => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [loading, setLoading] = useState(false); // New state for loading indicator
+  const [loading, setLoading] = useState(false);
+
   const auth = getAuth();
   const { setUser } = useContext(UserContext);
 
   const handleSignIn = async () => {
+    // Validation checks
     if (!email || !password) {
-      Alert.alert('Error', 'Please enter both email and password.');
+      Toast.show({
+        type: 'error',
+        text1: 'Missing Fields',
+        text2: 'Please fill in both email and password',
+      });
       return;
     }
 
-    setLoading(true); // Show loader while signing in
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(email)) {
+      Toast.show({
+        type: 'error',
+        text1: 'Invalid Email',
+        text2: 'Please enter a valid email address',
+      });
+      return;
+    }
 
     try {
-      // Sign in with Firebase authentication
+      setLoading(true);
+
       const userCredential = await signInWithEmailAndPassword(auth, email, password);
-      let user = userCredential.user;
+      const user = userCredential.user;
 
-      // Refresh user status
-      await user.reload();
-      user = auth.currentUser;
-
-      // Check email verification
       if (!user.emailVerified) {
-        Alert.alert('Error', 'Please verify your email before logging in.');
-        await sendEmailVerification(user); // Send verification email if not verified
+        Toast.show({
+          type: 'info',
+          text1: 'Email Not Verified',
+          text2: 'Please verify your email before signing in.',
+        });
         setLoading(false);
         return;
       }
 
-      // Check Firestore verification status
-      const db = getFirestore();
-      const userDocRef = doc(db, 'users', user.uid);
-      const userDocSnap = await getDoc(userDocRef);
+      // Set user context
+      setUser(user);
 
-      if (userDocSnap.exists()) {
-        const userData = userDocSnap.data();
+      Toast.show({
+        type: 'success',
+        text1: 'Welcome Back!',
+        text2: `Logged in as ${user.email}`,
+      });
 
-        if (!userData.isVerified) {
-          await updateDoc(userDocRef, { isVerified: true });
-          console.log('Firestore updated: User is now verified.');
-        }
-      }
-
-      setUser(user); // Set user in context
-      console.log('User signed in!');
-
-      // Navigate to HomePage with a proper reset to prevent going back to SignIn
+      // Navigate to Home and reset the navigation stack
       navigation.dispatch(
         CommonActions.reset({
           index: 0,
@@ -73,41 +78,50 @@ const SignInPage = ({ navigation }) => {
         })
       );
     } catch (error) {
-      console.error('Error signing in:', error.message);
-      Alert.alert('Login Failed', error.message);
+      let errorMsg = 'An error occurred during sign-in.';
+
+      if (error.code === 'auth/user-not-found') {
+        errorMsg = 'No user found with this email.';
+      } else if (error.code === 'auth/wrong-password') {
+        errorMsg = 'Incorrect password.';
+      } else if (error.code === 'auth/too-many-requests') {
+        errorMsg = 'Too many attempts. Try again later.';
+      }
+
+      Toast.show({
+        type: 'error',
+        text1: 'Sign In Failed',
+        text2: errorMsg,
+      });
     } finally {
-      setLoading(false); // Hide loader
+      setLoading(false);
     }
   };
 
   return (
-    <LinearGradient colors={['#4a90e2', '#005bea']} style={styles.container}>
-      <Image source={logo} style={styles.logo} animation="bounceIn" delay={500} duration={1500} />
-      <Text style={styles.title}>Welcome Back</Text>
+    <LinearGradient colors={['#FF7E5F', '#FD3A69']} style={styles.container}>
+      <Image source={logo} style={styles.logo} animation="bounceIn" duration={1500} />
 
       <TextInput
         style={styles.input}
         placeholder="Email"
-        placeholderTextColor="#aaa"
+        placeholderTextColor="#ccc"
         value={email}
         onChangeText={setEmail}
         keyboardType="email-address"
         autoCapitalize="none"
       />
+
       <TextInput
         style={styles.input}
         placeholder="Password"
-        placeholderTextColor="#aaa"
+        placeholderTextColor="#ccc"
         value={password}
         onChangeText={setPassword}
         secureTextEntry
       />
 
-      <TouchableOpacity 
-        style={[styles.button, loading && styles.buttonDisabled]} 
-        onPress={handleSignIn}
-        disabled={loading}
-      >
+      <TouchableOpacity style={styles.button} onPress={handleSignIn} disabled={loading}>
         {loading ? (
           <ActivityIndicator color="#fff" />
         ) : (
@@ -116,15 +130,12 @@ const SignInPage = ({ navigation }) => {
       </TouchableOpacity>
 
       <TouchableOpacity onPress={() => navigation.navigate('ForgotPassword')}>
-        <Text style={styles.forgotPassword}>Forgot Password?</Text>
+        <Text style={styles.link}>Forgot Password?</Text>
       </TouchableOpacity>
 
-      <View style={styles.signupContainer}>
-        <Text>Don't have an account? </Text>
-        <TouchableOpacity onPress={() => navigation.navigate('SignUp')}>
-          <Text style={styles.signupText}>Sign Up</Text>
-        </TouchableOpacity>
-      </View>
+      <TouchableOpacity onPress={() => navigation.navigate('SignUp')}>
+        <Text style={styles.link}>Don't have an account? Sign Up</Text>
+      </TouchableOpacity>
     </LinearGradient>
   );
 };
@@ -132,59 +143,37 @@ const SignInPage = ({ navigation }) => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
+    paddingHorizontal: 20,
     justifyContent: 'center',
     alignItems: 'center',
-    padding: 20,
   },
   logo: {
-    width: 100,
-    height: 100,
-    marginBottom: 20,
-  },
-  title: {
-    fontSize: 24,
-    fontWeight: 'bold',
-    color: '#fff',
-    marginBottom: 20,
+    width: 150,
+    height: 150,
+    marginBottom: 40,
   },
   input: {
     width: '100%',
-    height: 50,
-    borderColor: '#ddd',
-    borderWidth: 1,
-    borderRadius: 5,
-    paddingHorizontal: 10,
-    marginBottom: 15,
     backgroundColor: '#fff',
+    padding: 15,
+    marginVertical: 10,
+    borderRadius: 10,
   },
   button: {
+    backgroundColor: '#FF416C',
     width: '100%',
-    height: 50,
-    backgroundColor: '#007bff',
-    justifyContent: 'center',
+    padding: 15,
     alignItems: 'center',
-    borderRadius: 5,
-    marginBottom: 15,
-  },
-  buttonDisabled: {
-    backgroundColor: '#5a99d4',
+    borderRadius: 10,
+    marginTop: 10,
   },
   buttonText: {
     color: '#fff',
-    fontSize: 18,
     fontWeight: 'bold',
   },
-  forgotPassword: {
+  link: {
     color: '#fff',
-    marginBottom: 15,
-  },
-  signupContainer: {
-    flexDirection: 'row',
     marginTop: 15,
-  },
-  signupText: {
-    color: '#fff',
-    fontWeight: 'bold',
   },
 });
 

@@ -1,14 +1,14 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef, useContext } from "react";
 import {
   View,
   Text,
   TextInput,
   TouchableOpacity,
-  StyleSheet,
   FlatList,
-  ActivityIndicator,
   KeyboardAvoidingView,
   Platform,
+  SafeAreaView,
+  StatusBar,
 } from "react-native";
 import Icon from "react-native-vector-icons/Ionicons";
 import { auth, db } from "../firebase";
@@ -21,243 +21,246 @@ import {
   onSnapshot,
   serverTimestamp,
   doc,
-  getDoc
 } from "firebase/firestore";
+import { ThemeContext } from "../context/ThemeContext";
+import Navbar from "./navbar";
 
 const ChatScreen = ({ route, navigation }) => {
   const { recipientId, recipientName } = route.params;
-  const [messages, setMessages] = useState([]);
-  const [newMessage, setNewMessage] = useState("");
-  const [loading, setLoading] = useState(true);
-  const [isOnline, setIsOnline] = useState(false);
-  const [lastSeen, setLastSeen] = useState(null);
+  const { colors, isDarkMode } = useContext(ThemeContext);
 
+  const [messages, setMessages] = useState([]);
+  const [messageText, setMessageText] = useState("");
+  const [userStatus, setUserStatus] = useState({
+    isOnline: false,
+    lastSeen: null,
+  });
+
+  const flatListRef = useRef();
+
+  // Fetch messages
   useEffect(() => {
     const messagesRef = collection(db, "messages");
+
     const q = query(
       messagesRef,
-      where("participants", "array-contains", auth.currentUser?.uid),
+      where("participants", "array-contains", auth.currentUser.uid),
       orderBy("timestamp", "asc")
     );
 
-    const unsubscribe = onSnapshot(
-      q,
-      (snapshot) => {
-        const fetchedMessages = snapshot.docs.map((doc) => ({
-          id: doc.id,
-          ...doc.data(),
-        }));
-        setMessages(
-          fetchedMessages.filter(
-            (msg) =>
-              (msg.senderId === auth.currentUser?.uid &&
-                msg.recipientId === recipientId) ||
-              (msg.senderId === recipientId &&
-                msg.recipientId === auth.currentUser?.uid)
-          )
+    const unsubscribe = onSnapshot(q, (snapshot) => {
+      const msgs = snapshot.docs
+        .map((doc) => ({ id: doc.id, ...doc.data() }))
+        .filter(
+          (msg) =>
+            (msg.senderId === auth.currentUser.uid &&
+              msg.recipientId === recipientId) ||
+            (msg.recipientId === auth.currentUser.uid &&
+              msg.senderId === recipientId)
         );
-        setLoading(false);
-      },
-      (error) => {
-        console.error("Error fetching messages: ", error);
-        setLoading(false);
-      }
-    );
+
+      setMessages(msgs);
+
+      setTimeout(() => {
+        flatListRef.current?.scrollToEnd({ animated: true });
+      }, 100);
+    });
+
     return () => unsubscribe();
   }, [recipientId]);
 
-  // Fetch recipient's online status and last seen time
+  // Listen for recipient's online/lastSeen status
   useEffect(() => {
-    const recipientRef = doc(db, "users", recipientId);
-    const unsubscribe = onSnapshot(recipientRef, (docSnap) => {
-      if (docSnap.exists()) {
-        const userData = docSnap.data();
-        setIsOnline(userData.isOnline);
-        setLastSeen(userData.lastSeen?.toDate());
+    const userDocRef = doc(db, "users", recipientId);
+
+    const unsubscribe = onSnapshot(userDocRef, (docSnapshot) => {
+      if (docSnapshot.exists()) {
+        const data = docSnapshot.data();
+        setUserStatus({
+          isOnline: data.isOnline,
+          lastSeen: data.lastSeen,
+        });
       }
     });
+
     return () => unsubscribe();
   }, [recipientId]);
 
+  // Send message
   const sendMessage = async () => {
-    if (newMessage.trim().length === 0) return;
+    if (!messageText.trim()) return;
+
     try {
-      const messagesRef = collection(db, "messages");
-      await addDoc(messagesRef, {
+      await addDoc(collection(db, "messages"), {
         senderId: auth.currentUser.uid,
         recipientId,
         participants: [auth.currentUser.uid, recipientId],
-        text: newMessage.trim(),
+        text: messageText,
         timestamp: serverTimestamp(),
       });
-      setNewMessage("");
+
+      setMessageText("");
     } catch (error) {
       console.error("Error sending message:", error);
     }
   };
 
+  // Render each message
   const renderMessage = ({ item }) => {
-    const isSender = item.senderId === auth.currentUser?.uid;
+    const isSender = item.senderId === auth.currentUser.uid;
+
     return (
       <View
-        style={[
-          styles.messageBubble,
-          isSender ? styles.senderBubble : styles.receiverBubble,
-        ]}
+        style={{
+          alignSelf: isSender ? "flex-end" : "flex-start",
+          backgroundColor: isSender ? colors.primary : colors.card,
+          marginBottom: 8,
+          padding: 10,
+          borderRadius: 10,
+          maxWidth: "75%",
+        }}
       >
-        <Text style={styles.messageText}>{item.text}</Text>
-        {item.timestamp && (
-          <Text style={styles.timestampText}>
-            {new Date(item.timestamp.seconds * 1000).toLocaleTimeString([], {
-              hour: "2-digit",
-              minute: "2-digit",
-            })}
-          </Text>
-        )}
+        <Text
+          style={{
+            color: isSender ? "#fff" : colors.text,
+          }}
+        >
+          {item.text || ""}
+        </Text>
+
+        <Text style={{ fontSize: 10, color: "#888", marginTop: 4 }}>
+          {item.timestamp?.seconds
+            ? new Date(item.timestamp.seconds * 1000).toLocaleTimeString([], {
+                hour: "2-digit",
+                minute: "2-digit",
+                hour12: true,
+                month: "short",
+                day: "numeric",
+              })
+            : ""}
+        </Text>
       </View>
     );
   };
 
-  return (
-    <KeyboardAvoidingView
-      style={styles.container}
-      behavior={Platform.OS === "ios" ? "padding" : null}
-      keyboardVerticalOffset={90}
-    >
-      <View style={styles.header}>
-        <TouchableOpacity onPress={() => navigation.goBack()}>
-          <Icon name="arrow-back-outline" size={24} color="#fff" />
-        </TouchableOpacity>
-        <View>
-          <Text style={styles.headerTitle}>{recipientName}</Text>
-          {isOnline ? (
-            <Text style={styles.onlineStatus}>Online</Text>
-          ) : (
-            lastSeen && (
-              <Text style={styles.lastSeen}>
-                Last seen: {new Date(lastSeen).toLocaleString()}
-              </Text>
-            )
-          )}
-        </View>
-        <View style={{ width: 24 }} />
-      </View>
+  // Format last seen time
+  const formatLastSeen = (timestamp) => {
+    if (!timestamp?.seconds) return "";
 
-      {loading ? (
-        <ActivityIndicator size="large" color="#4a90e2" style={styles.loader} />
-      ) : (
+    const date = new Date(timestamp.seconds * 1000);
+    return `${date.toLocaleDateString()} ${date.toLocaleTimeString([], {
+      hour: "2-digit",
+      minute: "2-digit",
+    })}`;
+  };
+
+  return (
+    <SafeAreaView style={{ flex: 1, backgroundColor: colors.background }}>
+      <StatusBar
+        backgroundColor={colors.background}
+        barStyle={isDarkMode ? "light-content" : "dark-content"}
+      />
+
+      <View style={{ flex: 1 }}>
+        {/* Header */}
+        <View
+          style={{
+            flexDirection: "row",
+            alignItems: "center",
+            paddingVertical: 15,
+            paddingHorizontal: 10,
+            borderBottomWidth: 1,
+            borderColor: colors.border,
+          }}
+        >
+          <TouchableOpacity onPress={() => navigation.goBack()}>
+            <Icon name="arrow-back" size={24} color={colors.text} />
+          </TouchableOpacity>
+
+          <View style={{ flex: 1, marginLeft: 10 }}>
+            <Text style={{ fontSize: 18, fontWeight: "bold", color: colors.primary }}>
+              {recipientName || "Chat"}
+            </Text>
+
+            <Text
+              style={{
+                fontSize: 12,
+                color: userStatus.isOnline ? "green" : colors.text,
+              }}
+            >
+              {userStatus.isOnline
+                ? "Online"
+                : userStatus.lastSeen
+                ? `Last seen: ${formatLastSeen(userStatus.lastSeen)}`
+                : "Offline"}
+            </Text>
+          </View>
+
+          {/* Optional: Online status dot */}
+          <View
+            style={{
+              width: 10,
+              height: 10,
+              borderRadius: 5,
+              backgroundColor: userStatus.isOnline ? "green" : "gray",
+              marginRight: 10,
+            }}
+          />
+        </View>
+
+        {/* Messages */}
         <FlatList
+          ref={flatListRef}
           data={messages}
-          renderItem={renderMessage}
           keyExtractor={(item) => item.id}
-          style={styles.messagesList}
+          renderItem={renderMessage}
+          contentContainerStyle={{ padding: 15 }}
+          showsVerticalScrollIndicator={false}
           ListEmptyComponent={
-            <Text style={styles.emptyText}>No messages yet</Text>
+            <Text style={{ textAlign: 'center', color: colors.text, marginTop: 20 }}>
+              No messages yet.
+            </Text>
           }
         />
-      )}
 
-      <View style={styles.inputContainer}>
-        <TextInput
-          placeholder="Type a message"
-          placeholderTextColor="#bbb"
-          style={styles.input}
-          value={newMessage}
-          onChangeText={setNewMessage}
-        />
-        <TouchableOpacity style={styles.sendButton} onPress={sendMessage}>
-          <Icon name="send-outline" size={24} color="#fff" />
-        </TouchableOpacity>
+        {/* Message Input */}
+        <KeyboardAvoidingView
+          behavior={Platform.OS === "ios" ? "padding" : undefined}
+          keyboardVerticalOffset={90}
+        >
+          <View
+            style={{
+              flexDirection: "row",
+              padding: 10,
+              backgroundColor: colors.card,
+              borderTopWidth: 1,
+              borderColor: colors.border,
+            }}
+          >
+            <TextInput
+              value={messageText}
+              onChangeText={setMessageText}
+              placeholder="Type a message..."
+              placeholderTextColor={colors.text}
+              style={{
+                flex: 1,
+                color: colors.text,
+                paddingHorizontal: 10,
+                maxHeight: 120,
+              }}
+              multiline
+            />
+            <TouchableOpacity onPress={sendMessage}>
+              <Icon name="send" size={24} color={colors.primary} />
+            </TouchableOpacity>
+          </View>
+        </KeyboardAvoidingView>
+
+        {/* Bottom Navbar */}
+        <Navbar navigation={navigation} activeTab="Inbox" />
       </View>
-    </KeyboardAvoidingView>
+    </SafeAreaView>
   );
 };
 
 export default ChatScreen;
-
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: "#4a90e2",
-  },
-  header: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    padding: 15,
-    backgroundColor: "#4a90e2",
-  },
-  headerTitle: {
-    color: "#fff",
-    fontSize: 18,
-    fontWeight: "bold",
-  },
-  messagesList: {
-    flex: 1,
-    padding: 10,
-  },
-  messageBubble: {
-    marginVertical: 5,
-    padding: 10,
-    borderRadius: 10,
-    maxWidth: "75%",
-  },
-  senderBubble: {
-    backgroundColor: "#24539c",
-    alignSelf: "flex-end",
-  },
-  receiverBubble: {
-    backgroundColor: "#24539c",
-    alignSelf: "flex-start",
-  },
-  messageText: {
-    color: "#fff",
-    fontSize: 14,
-  },
-  timestampText: {
-    color: "#ddd",
-    fontSize: 10,
-    marginTop: 5,
-    alignSelf: "flex-end",
-  },
-  loader: {
-    flex: 1,
-    justifyContent: "center",
-    alignItems: "center",
-  },
-  emptyText: {
-    color: "#fff",
-    textAlign: "center",
-    marginTop: 20,
-  },
-  inputContainer: {
-    flexDirection: "row",
-    alignItems: "center",
-    padding: 10,
-    borderTopWidth: 1,
-    borderTopColor: "#333",
-    backgroundColor: "#4a90e2",
-  },
-  input: {
-    flex: 1,
-    color: "#333",
-    backgroundColor: "#e6e9ee",
-    paddingHorizontal: 15,
-    borderRadius: 20,
-    height: 50,
-  },
-  sendButton: {
-    marginLeft: 10,
-    backgroundColor: "#005bea",
-    padding: 10,
-    borderRadius: 20,
-  },
-  onlineStatus: {
-    color: "#0f0",
-    fontSize: 14,
-  },
-  lastSeen: {
-    color: "#ddd",
-    fontSize: 12,
-  },
-});

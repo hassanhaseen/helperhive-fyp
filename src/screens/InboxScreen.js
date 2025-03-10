@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useContext } from "react";
 import {
   View,
   Text,
@@ -19,11 +19,14 @@ import {
   onSnapshot,
   orderBy,
   doc,
-  getDoc
+  getDoc,
 } from "firebase/firestore";
 import Navbar from "./navbar";
+import { ThemeContext } from "../context/ThemeContext";
 
 const InboxScreen = ({ navigation }) => {
+  const { colors, isDarkMode } = useContext(ThemeContext);
+
   const [conversations, setConversations] = useState([]);
   const [loading, setLoading] = useState(true);
 
@@ -91,7 +94,7 @@ const InboxScreen = ({ navigation }) => {
 
   const renderChatItem = ({ item }) => (
     <TouchableOpacity
-      style={styles.chatItem}
+      style={[styles.chatItem, { backgroundColor: colors.card }]}
       onPress={() =>
         navigation.navigate("ChatScreen", {
           recipientId: item.id,
@@ -99,20 +102,21 @@ const InboxScreen = ({ navigation }) => {
         })
       }
     >
-      <View>
+      <View style={styles.chatImageContainer}>
         <Image
           source={{
-            uri: item.image || "https://cdn-icons-png.flaticon.com/512/9187/9187604.png",
+            uri:
+              item.image ||
+              "https://cdn-icons-png.flaticon.com/512/9187/9187604.png",
           }}
           style={styles.chatImage}
         />
-        {item.isOnline ? (
-          <View style={styles.onlineIndicator} />
-        ) : null}
+        {item.isOnline && <View style={styles.onlineIndicator} />}
       </View>
 
       <View style={styles.chatInfo}>
-        <Text style={styles.chatName}>{item.name}</Text>
+        <Text style={[styles.chatName, { color: colors.text }]}>{item.name}</Text>
+
         {item.isOnline ? (
           <Text style={styles.onlineText}>Online</Text>
         ) : item.lastSeen ? (
@@ -120,42 +124,54 @@ const InboxScreen = ({ navigation }) => {
             Last seen: {new Date(item.lastSeen.toDate()).toLocaleString()}
           </Text>
         ) : null}
-        <Text style={styles.chatMessage} numberOfLines={1}>
-          {item.text}
+
+        <Text style={[styles.chatMessage, { color: colors.text }]} numberOfLines={1}>
+          {item.text || "No messages yet"}
         </Text>
       </View>
-      <Text style={styles.chatTime}>
-        {new Date(item.timestamp?.seconds * 1000).toLocaleTimeString([], {
-          hour: "2-digit",
-          minute: "2-digit",
-        })}
+
+      <Text style={[styles.chatTime, { color: colors.text }]}>
+        {item.timestamp?.seconds
+          ? new Date(item.timestamp.seconds * 1000).toLocaleTimeString([], {
+              hour: "2-digit",
+              minute: "2-digit",
+            })
+          : ""}
       </Text>
     </TouchableOpacity>
   );
 
   if (loading) {
     return (
-      <View style={styles.loader}>
-        <ActivityIndicator size="large" color="#4a90e2" />
+      <View style={[styles.loader, { backgroundColor: colors.background }]}>
+        <ActivityIndicator size="large" color={colors.primary} />
       </View>
     );
   }
 
   return (
-    <SafeAreaView style={styles.safeArea}>
-      <StatusBar backgroundColor="#005bea" barStyle="light-content" />
-      <View style={styles.container}>
-        <Text style={styles.headerTitle}>Inbox</Text>
+    <SafeAreaView style={{ flex: 1, backgroundColor: colors.background }}>
+      <StatusBar
+        backgroundColor={colors.background}
+        barStyle={isDarkMode ? "light-content" : "dark-content"}
+      />
+
+      <View style={{ flex: 1, backgroundColor: colors.background }}>
         <FlatList
           data={conversations}
           keyExtractor={(item) => item.id}
           renderItem={renderChatItem}
-          ListEmptyComponent={
-            <Text style={styles.emptyText}>No chats available</Text>
+          ListHeaderComponent={
+            <Text style={[styles.headerTitle, { color: colors.primary }]}>Inbox</Text>
           }
+          ListEmptyComponent={
+            <Text style={[styles.emptyText, { color: colors.text }]}>No chats available</Text>
+          }
+          contentContainerStyle={styles.listContainer}
         />
+
+        <Navbar navigation={navigation} activeTab="Inbox" />
       </View>
-      <Navbar navigation={navigation} activeTab="Inbox" />
     </SafeAreaView>
   );
 };
@@ -163,72 +179,47 @@ const InboxScreen = ({ navigation }) => {
 export default InboxScreen;
 
 const styles = StyleSheet.create({
-  safeArea: {
-    flex: 1,
-    backgroundColor: "#005bea",
-  },
-  container: {
-    flex: 1,
-    backgroundColor: "#f5f5f5",
-    padding: 20,
-  },
-  headerTitle: {
-    fontSize: 24,
-    fontWeight: "bold",
-    color: "#4a90e2",
-    marginBottom: 20,
+  listContainer: {
+    paddingBottom: 90,
+    paddingHorizontal: 20,
+    paddingTop: 20,
   },
   loader: {
     flex: 1,
     justifyContent: "center",
     alignItems: "center",
   },
+  headerTitle: {
+    fontSize: 24,
+    fontWeight: "bold",
+    marginBottom: 20,
+  },
   chatItem: {
     flexDirection: "row",
     alignItems: "center",
     marginBottom: 15,
-    backgroundColor: "#fff",
-    borderRadius: 10,
-    padding: 10,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 5,
+    borderRadius: 12,
+    padding: 15,
     elevation: 3,
+    shadowColor: "#000",
+    shadowOpacity: 0.1,
+    shadowOffset: { width: 0, height: 1 },
+    shadowRadius: 4,
+  },
+  chatImageContainer: {
+    position: "relative",
+    marginRight: 12,
   },
   chatImage: {
     width: 50,
     height: 50,
     borderRadius: 25,
-    marginRight: 10,
     backgroundColor: "#ccc",
-  },
-  chatInfo: {
-    flex: 1,
-  },
-  chatName: {
-    fontSize: 16,
-    fontWeight: "bold",
-    color: "#333",
-  },
-  chatMessage: {
-    fontSize: 14,
-    color: "#555",
-  },
-  chatTime: {
-    fontSize: 12,
-    color: "#999",
-  },
-  emptyText: {
-    color: "#999",
-    textAlign: "center",
-    marginTop: 20,
-    fontSize: 16,
   },
   onlineIndicator: {
     position: "absolute",
-    bottom: 5,
-    right: 5,
+    bottom: 2,
+    right: 2,
     width: 12,
     height: 12,
     borderRadius: 6,
@@ -236,12 +227,33 @@ const styles = StyleSheet.create({
     borderWidth: 2,
     borderColor: "#fff",
   },
+  chatInfo: {
+    flex: 1,
+  },
+  chatName: {
+    fontSize: 16,
+    fontWeight: "bold",
+    marginBottom: 3,
+  },
+  chatMessage: {
+    fontSize: 14,
+  },
+  chatTime: {
+    fontSize: 12,
+  },
+  emptyText: {
+    fontSize: 16,
+    textAlign: "center",
+    marginTop: 100,
+  },
   onlineText: {
     color: "#0f0",
     fontSize: 14,
+    marginBottom: 3,
   },
   lastSeenText: {
     color: "#999",
     fontSize: 12,
+    marginBottom: 3,
   },
 });

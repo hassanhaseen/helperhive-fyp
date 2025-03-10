@@ -1,11 +1,23 @@
 import React, { useState, useContext } from 'react';
-import { StyleSheet, TextInput, TouchableOpacity, Text, View, Dimensions, Alert } from 'react-native';
-import { auth } from '../firebase';
-import { createUserWithEmailAndPassword, updateProfile, sendEmailVerification, signInWithEmailAndPassword } from 'firebase/auth';
-import { getFirestore, doc, setDoc, getDoc, updateDoc } from 'firebase/firestore';
+import {
+  StyleSheet,
+  TextInput,
+  TouchableOpacity,
+  Text,
+  Dimensions,
+  ActivityIndicator,
+} from 'react-native';
+import {
+  createUserWithEmailAndPassword,
+  updateProfile,
+  sendEmailVerification,
+} from 'firebase/auth';
+import { getFirestore, doc, setDoc } from 'firebase/firestore';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Image } from 'react-native-animatable';
-import * as ImagePicker from 'expo-image-picker';
+import Toast from 'react-native-toast-message';
+
+import { auth } from '../firebase';
 import logo from '../assets/logo.png';
 import { UserContext } from '../context/UserContext';
 
@@ -16,168 +28,152 @@ const SignUpPage = ({ navigation }) => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
-  const [profileImage, setProfileImage] = useState(null);
-  const [passwordStrength, setPasswordStrength] = useState('');
-  
+  const [loading, setLoading] = useState(false);
+
   const { setUser } = useContext(UserContext);
+  const db = getFirestore();
 
   const handleSignUp = async () => {
-  if (password !== confirmPassword) {
-    Alert.alert('Error', 'Passwords do not match!');
-    return;
-  }
-
-  try {
-    const db = getFirestore();
-    const userCredential = await createUserWithEmailAndPassword(auth, email, password);
-    const user = userCredential.user;
-
-    if (user) {
-      await sendEmailVerification(user);
-      Alert.alert('Success', 'Verification email sent! Please check your inbox.');
-      console.log(`Verification email sent to: ${email}`);
-      
-      // Save user data to Firestore
-      await setDoc(doc(db, "users", user.uid), {
-        uid: user.uid,
-        name: name,
-        email: email,
-        isVerified: false, // Initially false until user verifies email
-        createdAt: new Date()
+    // Basic validations
+    if (!name || !email || !password || !confirmPassword) {
+      Toast.show({
+        type: 'error',
+        text1: 'Missing Fields',
+        text2: 'Please fill out all fields.',
       });
-      
-      // Navigate to Sign In screen after sending verification email
-      navigation.navigate('SignIn');
-    } else {
-      Alert.alert('Error', 'User registration failed.');
-    }
-
-    console.log('User signed up successfully.');
-  } catch (error) {
-    console.error('Error during signup:', error);
-    Alert.alert('Signup Failed', error.message);
-  }
-};
-
-  const handleLogin = async (email, password) => {
-  try {
-    const userCredential = await signInWithEmailAndPassword(auth, email, password);
-    const user = userCredential.user;
-
-    // Step 1: Check if email is verified in Firebase Authentication
-    if (!user.emailVerified) {
-      Alert.alert('Error', 'Please verify your email before logging in.');
       return;
     }
 
-    // Step 2: Check Firestore's `isVerified` field
-    const db = getFirestore();
-    const userDocRef = doc(db, "users", user.uid);
-    const userDocSnap = await getDoc(userDocRef);
-
-    if (userDocSnap.exists()) {
-      const userData = userDocSnap.data();
-      
-      if (!userData.isVerified) {
-        Alert.alert('Error', 'Your account is not verified in Firestore. Please check your email.');
-        return;
-      }
-
-      // Step 3: If Firebase email is verified, update Firestore `isVerified` to true
-      if (!userData.isVerified && user.emailVerified) {
-        await updateDoc(userDocRef, { isVerified: true });
-        console.log('Firestore updated: User is now verified.');
-      }
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(email)) {
+      Toast.show({
+        type: 'error',
+        text1: 'Invalid Email',
+        text2: 'Please enter a valid email address.',
+      });
+      return;
     }
 
-    setUser(user);
-    console.log('User logged in successfully!');
-    navigation.navigate('Home'); // Redirect to home page after successful login
-
-  } catch (error) {
-    console.error('Error signing in:', error.message);
-    Alert.alert('Login Failed', error.message);
-  }
-};
-
-  const handlePasswordChange = (text) => {
-    setPassword(text);
-    if (text.length < 6) {
-      setPasswordStrength('Password Strength: Weak');
-    } else if (text.length < 10) {
-      setPasswordStrength('Password Strength: Medium');
-    } else {
-      setPasswordStrength('Password Strength: Strong');
+    if (password.length < 6) {
+      Toast.show({
+        type: 'error',
+        text1: 'Weak Password',
+        text2: 'Password must be at least 6 characters long.',
+      });
+      return;
     }
-  };
 
-  const pickImage = async () => {
-    let result = await ImagePicker.launchImageLibraryAsync({
-      mediaTypes: ImagePicker.MediaTypeOptions.Images,
-      allowsEditing: true,
-      aspect: [1, 1],
-      quality: 1,
-    });
+    if (password !== confirmPassword) {
+      Toast.show({
+        type: 'error',
+        text1: 'Passwords Do Not Match',
+        text2: 'Please make sure both passwords match.',
+      });
+      return;
+    }
 
-    if (!result.cancelled) {
-      setProfileImage(result.uri);
+    try {
+      setLoading(true);
+
+      // Firebase Authentication - Create new user
+      const userCredential = await createUserWithEmailAndPassword(auth, email, password);
+      const user = userCredential.user;
+
+      // Update display name
+      await updateProfile(user, { displayName: name });
+
+      // Send email verification
+      await sendEmailVerification(user);
+
+      // Create user document in Firestore
+      await setDoc(doc(db, 'users', user.uid), {
+        uid: user.uid,
+        name,
+        email,
+        role: 'customer', // or 'provider' if you add logic
+        createdAt: new Date(),
+      });
+
+      // Don't setUser(user) because we are not logging in yet
+      Toast.show({
+        type: 'success',
+        text1: 'Registration Successful!',
+        text2: 'Please check your inbox to verify your email before signing in.',
+      });
+
+      // Navigate back to SignIn page (use correct route name!)
+      navigation.navigate('SignIn');
+    } catch (error) {
+      console.log(error);
+      let errorMsg = 'An error occurred during sign-up.';
+
+      if (error.code === 'auth/email-already-in-use') {
+        errorMsg = 'This email is already registered.';
+      } else if (error.code === 'auth/invalid-email') {
+        errorMsg = 'Invalid email address.';
+      }
+
+      Toast.show({
+        type: 'error',
+        text1: 'Sign Up Failed',
+        text2: errorMsg,
+      });
+    } finally {
+      setLoading(false);
     }
   };
 
   return (
-    <LinearGradient colors={['#4a90e2', '#005bea']} style={styles.container}>
-      <TouchableOpacity onPress={pickImage}>
-        <Image
-          source={profileImage ? { uri: profileImage } : logo}
-          style={styles.profileImage}
-          animation="bounceIn"
-          delay={500}
-          duration={1500}
-        />
-      </TouchableOpacity>
-      <Text style={styles.title}>Create Your Account</Text>
+    <LinearGradient colors={['#FF7E5F', '#FD3A69']} style={styles.container}>
+      <Image source={logo} style={styles.logo} animation="bounceIn" duration={1500} />
+
       <TextInput
         style={styles.input}
-        placeholder="Full Name"
-        placeholderTextColor="#aaa"
+        placeholder="Name"
+        placeholderTextColor="#ccc"
         value={name}
         onChangeText={setName}
       />
+
       <TextInput
         style={styles.input}
         placeholder="Email"
-        placeholderTextColor="#aaa"
+        placeholderTextColor="#ccc"
         value={email}
         onChangeText={setEmail}
         keyboardType="email-address"
         autoCapitalize="none"
       />
+
       <TextInput
         style={styles.input}
         placeholder="Password"
-        placeholderTextColor="#aaa"
+        placeholderTextColor="#ccc"
         value={password}
-        onChangeText={handlePasswordChange}
+        onChangeText={setPassword}
         secureTextEntry
       />
-      <Text style={styles.passwordStrength}>{passwordStrength}</Text>
+
       <TextInput
         style={styles.input}
         placeholder="Confirm Password"
-        placeholderTextColor="#aaa"
+        placeholderTextColor="#ccc"
         value={confirmPassword}
         onChangeText={setConfirmPassword}
         secureTextEntry
       />
-      <TouchableOpacity style={styles.button} onPress={handleSignUp}>
-        <Text style={styles.buttonText}>Sign Up</Text>
+
+      <TouchableOpacity style={styles.button} onPress={handleSignUp} disabled={loading}>
+        {loading ? (
+          <ActivityIndicator color="#fff" />
+        ) : (
+          <Text style={styles.buttonText}>Sign Up</Text>
+        )}
       </TouchableOpacity>
-      <View style={styles.signinContainer}>
-        <Text>Already have an account? </Text>
-        <TouchableOpacity onPress={() => navigation.navigate('SignIn')}>
-          <Text style={styles.signinText}>Sign In</Text>
-        </TouchableOpacity>
-      </View>
+
+      <TouchableOpacity onPress={() => navigation.navigate('SignIn')}>
+        <Text style={styles.link}>Already have an account? Sign In</Text>
+      </TouchableOpacity>
     </LinearGradient>
   );
 };
@@ -185,58 +181,37 @@ const SignUpPage = ({ navigation }) => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
+    paddingHorizontal: 20,
     justifyContent: 'center',
     alignItems: 'center',
-    padding: 20,
   },
-  profileImage: {
-    width: width * 0.5,
-    height: width * 0.3,
-    marginBottom: 20,
-    resizeMode: 'contain',
-  },
-  title: {
-    fontSize: 24,
-    fontWeight: 'bold',
-    color: '#fff',
-    marginBottom: 20,
+  logo: {
+    width: 150,
+    height: 150,
+    marginBottom: 40,
   },
   input: {
     width: '100%',
-    height: 50,
-    borderColor: '#ddd',
-    borderWidth: 1,
-    borderRadius: 5,
-    paddingHorizontal: 10,
-    marginBottom: 15,
     backgroundColor: '#fff',
+    padding: 15,
+    marginVertical: 10,
+    borderRadius: 10,
   },
   button: {
+    backgroundColor: '#FF416C',
     width: '100%',
-    height: 50,
-    backgroundColor: '#007bff',
-    justifyContent: 'center',
+    padding: 15,
     alignItems: 'center',
-    borderRadius: 5,
-    marginBottom: 15,
+    borderRadius: 10,
+    marginTop: 10,
   },
   buttonText: {
     color: '#fff',
-    fontSize: 18,
     fontWeight: 'bold',
   },
-  signinContainer: {
-    flexDirection: 'row',
-    marginTop: 15,
-  },
-  signinText: {
-    color: '#007bff',
-    textDecorationLine: 'underline',
-  },
-  passwordStrength: {
-    alignSelf: 'flex-start',
-    marginBottom: 15,
+  link: {
     color: '#fff',
+    marginTop: 15,
   },
 });
 
