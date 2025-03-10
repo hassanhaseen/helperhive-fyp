@@ -110,7 +110,7 @@ const ProfilePage = ({ navigation }) => {
         <View style={styles.headerWrapper}>
           <View style={styles.headerContent}>
             <Image
-              source={{ uri: userData?.profileImage || "https://cdn-icons-png.flaticon.com/512/9187/9187604.png" }}
+              source={{ uri: userData?.userAvatar || "https://cdn-icons-png.flaticon.com/512/9187/9187604.png" }}
               style={styles.profileImage}
             />
             <Text style={[styles.profileName, { color: colors.text }]}> 

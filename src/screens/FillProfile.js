@@ -25,17 +25,17 @@ import { supabase } from "../context/Supabase";
 const FillProfilePage = ({ navigation }) => {
   const { colors, isDarkMode } = useContext(ThemeContext);
 
-  const [name, setName] = useState("xx");
-  const [email, setEmail] = useState("xx");
-  const [phone, setPhone] = useState("xx");
-  const [cnicNumber, setCnicNumber] = useState("37045-4122111-5");
+  const [name, setName] = useState("");
+  const [email, setEmail] = useState("");
+  const [phone, setPhone] = useState("");
+  const [cnicNumber, setCnicNumber] = useState("");
   const [cnicFront, setCnicFront] = useState(null);
   const [cnicBack, setCnicBack] = useState(null);
   const [profileImage, setProfileImage] = useState(null);
-  const [experience, setExperience] = useState("00");
-  const [address, setAddress] = useState("ss");
-  const [city, setCity] = useState("ss");
-  const [dateOfBirth, setDateOfBirth] = useState("02-12-2004");
+  const [experience, setExperience] = useState("");
+  const [address, setAddress] = useState("");
+  const [city, setCity] = useState("");
+  const [dateOfBirth, setDateOfBirth] = useState("");
   const [loading, setLoading] = useState(false);
   const [requestStatus, setRequestStatus] = useState("");
   const [showModal, setShowModal] = useState(false);
@@ -229,9 +229,9 @@ const FillProfilePage = ({ navigation }) => {
         address,
         dateOfBirth,
         cnicNumber,
-        cnicFrontPath,
-        cnicBackPath,
-        userAvatar,
+        cnicFrontPath:`https://kmwfchtknlfvinxelshc.supabase.co/storage/v1/object/public/cnic-images/${cnicFrontPath}`,
+        cnicBackPath:`https://kmwfchtknlfvinxelshc.supabase.co/storage/v1/object/public/cnic-images/${cnicBackPath}`,
+        userAvatar:`https://kmwfchtknlfvinxelshc.supabase.co/storage/v1/object/public/cnic-images/${userAvatar}`,
         isServiceProvider: false,
         requestStatus: "Pending",
         updatedAt: new Date(),

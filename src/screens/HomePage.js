@@ -57,7 +57,7 @@ const HomePage = ({ navigation }) => {
           
           if (userDoc.exists()) {
             let userData = userDoc.data();
-            setUserImage("https://kmwfchtknlfvinxelshc.supabase.co/storage/v1/object/public/cnic-images/" + userData?.userAvatar || "");
+            setUserImage(userData?.userAvatar || "");
             setUserName(userData?.name || "User");
           }
         }
