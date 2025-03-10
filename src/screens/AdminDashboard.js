@@ -22,16 +22,19 @@ const AdminDashboard = () => {
 
   useEffect(() => {
     setLoading(true);
+
+    // Fetch Pending Users & Service Providers
     const unsubscribeUsers = onSnapshot(collection(db, "users"), (snapshot) => {
       const usersData = snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
-      setPendingUsers(usersData.filter(user => !user.isServiceProvider && user.requestStatus === "Pending"));
+      setPendingUsers(usersData.filter(user => user.requestStatus === "Pending" && !user.isServiceProvider));
       setServiceProviders(usersData.filter(user => user.isServiceProvider === true));
       setLoading(false);
     });
 
+    // Fetch Pending & Available Services
     const unsubscribeServices = onSnapshot(collection(db, "services"), (snapshot) => {
       const servicesData = snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
-      setPendingServices(servicesData.filter(service => service.status === "Pending" && !serviceProviders.some(provider => provider.id === service.userId)));
+      setPendingServices(servicesData.filter(service => service.status === "Pending"));
       setAvailableServices(servicesData.filter(service => service.status === "Approved"));
       setLoading(false);
     });
@@ -49,33 +52,6 @@ const AdminDashboard = () => {
     }));
   };
 
-  const approveUser = async (userId) => {
-    try {
-      await updateDoc(doc(db, "users", userId), { isServiceProvider: true, requestStatus: "Approved" });
-      Alert.alert("Success", "User approved as a service provider.");
-    } catch (error) {
-      console.error("Error approving user:", error);
-    }
-  };
-
-  const rejectUser = async (userId) => {
-    Alert.alert("Reject Request", "Are you sure you want to reject this user?", [
-      { text: "Cancel", style: "cancel" },
-      {
-        text: "Reject",
-        style: "destructive",
-        onPress: async () => {
-          try {
-            await deleteDoc(doc(db, "users", userId));
-            Alert.alert("Rejected", "User request has been rejected.");
-          } catch (error) {
-            console.error("Error rejecting user:", error);
-          }
-        },
-      },
-    ]);
-  };
-
   return (
     <ScrollView style={styles.container}>
       <Text style={styles.title}>Admin Dashboard</Text>
@@ -83,63 +59,71 @@ const AdminDashboard = () => {
 
       {/* Pending Users */}
       <Text style={styles.sectionTitle}>Pending Users</Text>
-      {pendingUsers.map((user) => (
+      {pendingUsers.length > 0 ? pendingUsers.map((user) => (
         <View key={user.id} style={styles.card}>
           <TouchableOpacity onPress={() => toggleExpand("user", user.id)}>
             <Text style={styles.cardTitle}>{user.name} - {user.email}</Text>
           </TouchableOpacity>
           {expanded.user === user.id && (
             <View style={styles.expandedContent}>
+              <Image source={{ uri: user.profileImage }} style={styles.profileImage} />
               <Text style={styles.infoText}>Phone: {user.phone}</Text>
-              <TouchableOpacity style={styles.approveButton} onPress={() => approveUser(user.id)}>
-                <Text style={styles.buttonText}>Approve</Text>
-              </TouchableOpacity>
-              <TouchableOpacity style={styles.rejectButton} onPress={() => rejectUser(user.id)}>
-                <Text style={styles.buttonText}>Reject</Text>
-              </TouchableOpacity>
+              <Text style={styles.infoText}>Address: {user.address}</Text>
+              <Text style={styles.infoText}>CNIC: {user.cnicNumber}</Text>
+              <Text style={styles.infoText}>Date of Birth: {user.dateOfBirth}</Text>
+              <Image source={{ uri: user.cnicFront }} style={styles.cnicImage} />
+              <Image source={{ uri: user.cnicBack }} style={styles.cnicImage} />
+              <View style={styles.buttonRow}>
+                <TouchableOpacity style={styles.approveButton} onPress={() => approveUser(user.id)}>
+                  <Text style={styles.buttonText}>Approve</Text>
+                </TouchableOpacity>
+                <TouchableOpacity style={styles.rejectButton} onPress={() => rejectUser(user.id)}>
+                  <Text style={styles.buttonText}>Reject</Text>
+                </TouchableOpacity>
+              </View>
             </View>
           )}
         </View>
-      ))}
+      )) : <Text style={styles.noDataText}>No Pending Users</Text>}
 
       {/* Service Providers */}
       <Text style={styles.sectionTitle}>Service Providers</Text>
-      {serviceProviders.map((provider) => (
+      {serviceProviders.length > 0 ? serviceProviders.map((provider) => (
         <View key={provider.id} style={styles.card}>
-          <TouchableOpacity onPress={() => toggleExpand("provider", provider.id)}>
-            <Text style={styles.cardTitle}>{provider.name} - {provider.email}</Text>
+          <Text style={styles.cardTitle}>{provider.name} - {provider.email}</Text>
+          <TouchableOpacity style={styles.rejectButton} onPress={() => deleteServiceProvider(provider.id)}>
+            <Text style={styles.buttonText}>Delete Provider</Text>
           </TouchableOpacity>
-          {expanded.provider === provider.id && (
-            <View style={styles.expandedContent}>
-              <Text style={styles.infoText}>Phone: {provider.phone}</Text>
-            </View>
-          )}
         </View>
-      ))}
+      )) : <Text style={styles.noDataText}>No Service Providers</Text>}
 
       {/* Pending Services */}
       <Text style={styles.sectionTitle}>Pending Services</Text>
-      {pendingServices.map((service) => (
-        <View key={service.id} style={styles.card}>
-          <TouchableOpacity onPress={() => toggleExpand("service", service.id)}>
-            <Text style={styles.cardTitle}>{service.name} - {service.category}</Text>
-          </TouchableOpacity>
-          {expanded.service === service.id && (
-            <View style={styles.expandedContent}>
-              <Text style={styles.infoText}>Description: {service.description}</Text>
-            </View>
-          )}
-        </View>
-      ))}
-
-      {/* Available Services */}
-      <Text style={styles.sectionTitle}>Available Services</Text>
-      {availableServices.map((service) => (
+      {pendingServices.length > 0 ? pendingServices.map((service) => (
         <View key={service.id} style={styles.card}>
           <Text style={styles.cardTitle}>{service.name} - {service.category}</Text>
           <Text style={styles.infoText}>Description: {service.description}</Text>
+          <View style={styles.buttonRow}>
+            <TouchableOpacity style={styles.approveButton} onPress={() => approveService(service.id)}>
+              <Text style={styles.buttonText}>Approve</Text>
+            </TouchableOpacity>
+            <TouchableOpacity style={styles.rejectButton} onPress={() => rejectService(service.id)}>
+              <Text style={styles.buttonText}>Reject</Text>
+            </TouchableOpacity>
+          </View>
         </View>
-      ))}
+      )) : <Text style={styles.noDataText}>No Pending Services</Text>}
+
+      {/* Available Services */}
+      <Text style={styles.sectionTitle}>Available Services</Text>
+      {availableServices.length > 0 ? availableServices.map((service) => (
+        <View key={service.id} style={styles.card}>
+          <Text style={styles.cardTitle}>{service.name} - {service.category}</Text>
+          <TouchableOpacity style={styles.rejectButton} onPress={() => deleteAvailableService(service.id)}>
+            <Text style={styles.buttonText}>Delete Service</Text>
+          </TouchableOpacity>
+        </View>
+      )) : <Text style={styles.noDataText}>No Available Services</Text>}
     </ScrollView>
   );
 };
@@ -153,8 +137,11 @@ const styles = StyleSheet.create({
   card: { backgroundColor: "#fff", borderRadius: 10, padding: 15, marginVertical: 8, shadowOpacity: 0.1, elevation: 3 },
   cardTitle: { fontSize: 16, fontWeight: "bold", color: "#4a90e2" },
   expandedContent: { marginTop: 10 },
-  infoText: { fontSize: 14, color: "#333" },
+  buttonRow: { flexDirection: "row", justifyContent: "space-between", marginTop: 10 },
   buttonText: { color: "#fff", fontSize: 14, fontWeight: "bold" },
-  approveButton: { backgroundColor: "#4CAF50", padding: 10, borderRadius: 5, alignItems: "center", marginVertical: 5 },
-  rejectButton: { backgroundColor: "#f44336", padding: 10, borderRadius: 5, alignItems: "center", marginVertical: 5 },
+  approveButton: { backgroundColor: "#4CAF50", padding: 10, borderRadius: 5, alignItems: "center", flex: 1, marginRight: 5 },
+  rejectButton: { backgroundColor: "#f44336", padding: 10, borderRadius: 5, alignItems: "center", flex: 1, marginLeft: 5 },
+  profileImage: { width: 80, height: 80, borderRadius: 40, marginVertical: 10 },
+  cnicImage: { width: 150, height: 90, marginVertical: 5, borderRadius: 5 },
+  noDataText: { textAlign: "center", fontSize: 14, color: "#888", marginVertical: 10 }
 });
