@@ -19,13 +19,15 @@ const AdminDashboard = () => {
   const [availableServices, setAvailableServices] = useState([]);
   const [loading, setLoading] = useState(true);
   const [expanded, setExpanded] = useState({ user: null, provider: null, service: null });
+  const [users, setUsers] = useState([]);
 
   useEffect(() => {
     setLoading(true);
 
-    // Fetch Pending Users & Service Providers
+    // Fetch Users
     const unsubscribeUsers = onSnapshot(collection(db, "users"), (snapshot) => {
       const usersData = snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
+      setUsers(usersData);
       setPendingUsers(usersData.filter(user => user.requestStatus === "Pending" && !user.isServiceProvider));
       setServiceProviders(usersData.filter(user => user.isServiceProvider === true));
       setLoading(false);
@@ -88,6 +90,15 @@ const AdminDashboard = () => {
     }
   };
 
+  const suspendService = async (serviceId) => {
+    try {
+      await updateDoc(doc(db, "services", serviceId), { status: "Pending" });
+      Alert.alert("Success", "Service suspended successfully");
+    } catch (error) {
+      Alert.alert("Error", "Failed to suspend service");
+    }
+  };
+
   return (
     <ScrollView style={styles.container}>
       <Text style={styles.title}>Admin Dashboard</Text>
@@ -135,29 +146,51 @@ const AdminDashboard = () => {
 
       {/* Pending Services */}
       <Text style={styles.sectionTitle}>Pending Services</Text>
-      {pendingServices.length > 0 ? pendingServices.map((service) => (
-        <View key={service.id} style={styles.card}>
-          <Text style={styles.cardTitle}>{service.name} - {service.category}</Text>
-          <Text style={styles.infoText}>Description: {service.description}</Text>
-          <View style={styles.buttonRow}>
-            <TouchableOpacity style={styles.approveButton} onPress={() => approveService(service.id)}>
-              <Text style={styles.buttonText}>Approve</Text>
-            </TouchableOpacity>
-            <TouchableOpacity style={styles.rejectButton} onPress={() => rejectService(service.id)}>
-              <Text style={styles.buttonText}>Reject</Text>
-            </TouchableOpacity>
+      {pendingServices.length > 0 ? pendingServices.map((service) => {
+        const requestedBy = users.find(user => user.id === service.userId);
+        return (
+          <View key={service.id} style={styles.card}>
+            <Text style={styles.cardTitle}>{service.serviceName} - {service.category}</Text>
+            <Text style={styles.infoText}>Description: {service.description}</Text>
+            <Text style={styles.infoText}>Price Range: {service.priceRange}</Text>
+            <Text style={styles.infoText}>Availability: {service.availability}</Text>
+            {requestedBy && (
+              <>
+                <Text style={styles.infoText}>Requested by: {requestedBy.name} - {requestedBy.email}</Text>
+                <Image source={{ uri: requestedBy.profileImage }} style={styles.profileImage} />
+                <Text style={styles.infoText}>Phone: {requestedBy.phone}</Text>
+                <Text style={styles.infoText}>Address: {requestedBy.address}</Text>
+                <Text style={styles.infoText}>CNIC: {requestedBy.cnicNumber}</Text>
+                <Text style={styles.infoText}>Date of Birth: {requestedBy.dateOfBirth}</Text>
+                <Image source={{ uri: requestedBy.cnicFront }} style={styles.cnicImage} />
+                <Image source={{ uri: requestedBy.cnicBack }} style={styles.cnicImage} />
+              </>
+            )}
+            <View style={styles.buttonRow}>
+              <TouchableOpacity style={styles.approveButton} onPress={() => approveService(service.id)}>
+                <Text style={styles.buttonText}>Approve</Text>
+              </TouchableOpacity>
+              <TouchableOpacity style={styles.rejectButton} onPress={() => rejectService(service.id)}>
+                <Text style={styles.buttonText}>Reject</Text>
+              </TouchableOpacity>
+            </View>
           </View>
-        </View>
-      )) : <Text style={styles.noDataText}>No Pending Services</Text>}
+        );
+      }) : <Text style={styles.noDataText}>No Pending Services</Text>}
 
       {/* Available Services */}
       <Text style={styles.sectionTitle}>Available Services</Text>
       {availableServices.length > 0 ? availableServices.map((service) => (
         <View key={service.id} style={styles.card}>
           <Text style={styles.cardTitle}>{service.name} - {service.category}</Text>
-          <TouchableOpacity style={styles.rejectButton} onPress={() => deleteAvailableService(service.id)}>
-            <Text style={styles.buttonText}>Delete Service</Text>
-          </TouchableOpacity>
+          <View style={styles.buttonRow}>
+            <TouchableOpacity style={styles.rejectButton} onPress={() => deleteAvailableService(service.id)}>
+              <Text style={styles.buttonText}>Delete Service</Text>
+            </TouchableOpacity>
+            <TouchableOpacity style={styles.suspendButton} onPress={() => suspendService(service.id)}>
+              <Text style={styles.buttonText}>Suspend</Text>
+            </TouchableOpacity>
+          </View>
         </View>
       )) : <Text style={styles.noDataText}>No Available Services</Text>}
     </ScrollView>
@@ -177,6 +210,7 @@ const styles = StyleSheet.create({
   buttonText: { color: "#fff", fontSize: 14, fontWeight: "bold" },
   approveButton: { backgroundColor: "#4CAF50", padding: 10, borderRadius: 5, alignItems: "center", flex: 1, marginRight: 5 },
   rejectButton: { backgroundColor: "#f44336", padding: 10, borderRadius: 5, alignItems: "center", flex: 1, marginLeft: 5 },
+  suspendButton: { backgroundColor: "#FFA500", padding: 10, borderRadius: 5, alignItems: "center", flex: 1, marginLeft: 5 },
   profileImage: { width: 80, height: 80, borderRadius: 40, marginVertical: 10 },
   cnicImage: { width: 150, height: 90, marginVertical: 5, borderRadius: 5 },
   noDataText: { textAlign: "center", fontSize: 14, color: "#888", marginVertical: 10 }
