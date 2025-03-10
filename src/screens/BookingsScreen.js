@@ -87,6 +87,11 @@ const BookingsScreen = ({ route, navigation }) => {
         type: "success",
         text1: "Booking placed successfully!",
       });
+
+      Toast.show({
+        type: "success",
+        text1: "Booking placed successfully!",
+      });
     } catch (error) {
       console.error("Error booking service:", error);
       Toast.show({
