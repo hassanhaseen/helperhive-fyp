@@ -194,7 +194,7 @@ const FillProfilePage = ({ navigation }) => {
 
     setLoading(true);
     const userId = currentUser.uid;
-
+    
     try {
       await setDoc(doc(db, "users", userId), {
         name,
