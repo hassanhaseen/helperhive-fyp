@@ -9,6 +9,7 @@ import {
   Platform,
   SafeAreaView,
   StatusBar,
+  Alert,
 } from "react-native";
 import Icon from "react-native-vector-icons/Ionicons";
 import { auth, db } from "../firebase";
@@ -22,13 +23,12 @@ import {
   serverTimestamp,
   doc,
   getDoc,
-  getDocs,
 } from "firebase/firestore";
 import { ThemeContext } from "../context/ThemeContext";
 import Navbar from "./navbar";
 
 const ChatScreen = ({ route, navigation }) => {
-  const { recipientId, recipientName, bookingId } = route.params || {};
+  const { recipientId, recipientName, serviceId } = route.params || {};
   const { colors, isDarkMode } = useContext(ThemeContext);
 
   const [messages, setMessages] = useState([]);
@@ -39,6 +39,7 @@ const ChatScreen = ({ route, navigation }) => {
   });
   const [bookingStatus, setBookingStatus] = useState("");
   const [hasReviewed, setHasReviewed] = useState(false);
+  const [userRole, setUserRole] = useState("");
 
   const flatListRef = useRef();
 
@@ -96,22 +97,49 @@ const ChatScreen = ({ route, navigation }) => {
 
   // Fetch booking status and check if the user has already submitted a review
   useEffect(() => {
-    if (!bookingId) return;
+    if (!serviceId) return;
 
-    const bookingDocRef = doc(db, "bookings", bookingId);
+    const bookingDocRef = doc(db, "bookings", serviceId);
 
     const unsubscribe = onSnapshot(bookingDocRef, (docSnapshot) => {
       if (docSnapshot.exists()) {
         const bookingData = docSnapshot.data();
         setBookingStatus(bookingData.status);
         setHasReviewed(bookingData.hasReviewed || false);
+        console.log("Service ID:", serviceId);
         console.log("Booking status:", bookingData.status);
         console.log("Has reviewed:", bookingData.hasReviewed);
       }
     });
 
     return () => unsubscribe();
-  }, [recipientId, bookingId]);
+  }, [recipientId, serviceId]);
+
+  // Fetch current user's role
+  useEffect(() => {
+    const fetchUserRole = async () => {
+      const userDocRef = doc(db, "users", auth.currentUser.uid);
+      const userDoc = await getDoc(userDocRef);
+      if (userDoc.exists()) {
+        const userData = userDoc.data();
+        setUserRole(userData.role);
+      }
+    };
+
+    fetchUserRole();
+  }, []);
+
+  // Create a new chat document
+  const createNewChat = async () => {
+    try {
+      await addDoc(collection(db, "chats"), {
+        participants: [auth.currentUser.uid, recipientId],
+        createdAt: serverTimestamp(),
+      });
+    } catch (error) {
+      console.error("Error creating new chat:", error);
+    }
+  };
 
   // Send message
   const sendMessage = async () => {
@@ -180,6 +208,21 @@ const ChatScreen = ({ route, navigation }) => {
       minute: "2-digit",
     })}`;
   };
+
+  // Handle Submit Review button press
+  const handleSubmitReviewPress = () => {
+    if (bookingStatus === "Completed" && !hasReviewed) {
+      console.log("Navigating to SubmitReview with serviceId:", serviceId);
+      navigation.navigate("SubmitReview", { serviceId });
+    } else {
+      Alert.alert("Notification", "You can only submit a review once the service is completed and you haven't reviewed yet.");
+    }
+  };
+
+  // Call createNewChat when the component mounts
+  useEffect(() => {
+    createNewChat();
+  }, []);
 
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: colors.background }}>
@@ -284,7 +327,7 @@ const ChatScreen = ({ route, navigation }) => {
         </KeyboardAvoidingView>
 
         {/* Submit Review Button */}
-        {bookingStatus === "Completed" && !hasReviewed && (
+        {userRole === "user" && (
           <TouchableOpacity
             style={{
               backgroundColor: "green", // Set the button color to green
@@ -293,7 +336,7 @@ const ChatScreen = ({ route, navigation }) => {
               margin: 15,
               alignItems: "center",
             }}
-            onPress={() => navigation.navigate("SubmitReview", { serviceId: recipientId, bookingId })}
+            onPress={handleSubmitReviewPress}
           >
             <Text style={{ color: "#fff", fontWeight: "bold" }}>Submit Review</Text>
           </TouchableOpacity>
