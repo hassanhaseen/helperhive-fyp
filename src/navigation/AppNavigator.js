@@ -23,7 +23,6 @@ import HelpCenterPage from "../screens/HelpCenterPage";
 import FAQAnswerScreen from '../screens/FAQAnswerScreen';
 import BookingDetails from "../screens/BookingDetails";
 
-
 // Import User Context
 import { UserContext } from "../context/UserContext";
 
@@ -67,6 +66,8 @@ const AppNavigator = () => {
         <Stack.Screen name="HelpCenterPage" component={HelpCenterPage} />
         <Stack.Screen name="FAQAnswer" component={FAQAnswerScreen} />
         <Stack.Screen name="BookingDetails" component={BookingDetails} />
+
+
 
 
       </Stack.Navigator>
