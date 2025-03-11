@@ -6,10 +6,11 @@ import {
   ScrollView,
   TouchableOpacity,
   Image,
+  ActivityIndicator,
 } from "react-native";
 import Icon from "react-native-vector-icons/Ionicons";
-import { collection, query, where, onSnapshot } from "firebase/firestore";
-import { db } from "../firebase";
+import { collection, query, where, onSnapshot, getDoc, doc } from "firebase/firestore";
+import { auth, db } from "../firebase";
 import Toast from "react-native-toast-message";
 import { ThemeContext } from "../context/ThemeContext";
 
@@ -17,6 +18,8 @@ const ServiceDetails = ({ route, navigation }) => {
   const { service } = route.params;
   const { colors } = useContext(ThemeContext);
   const [reviews, setReviews] = useState([]);
+  const [isServiceProvider, setIsServiceProvider] = useState(null); // Initial state as null (not false)
+  const user = auth.currentUser;
 
   useEffect(() => {
     const reviewsRef = collection(db, "reviews");
@@ -27,6 +30,23 @@ const ServiceDetails = ({ route, navigation }) => {
     });
     return () => unsubscribe();
   }, [service.id]);
+
+  useEffect(() => {
+    if (user) {
+      const checkUserType = async () => {
+        const userRef = doc(db, "users", user.uid);
+        const userSnap = await getDoc(userRef);
+        if (userSnap.exists() && userSnap.data().isServiceProvider) {
+          setIsServiceProvider(true);
+        } else {
+          setIsServiceProvider(false);
+        }
+      };
+      checkUserType();
+    } else {
+      setIsServiceProvider(false);
+    }
+  }, [user]);
 
   const handleMessage = () => {
     if (!service.userId) {
@@ -103,24 +123,30 @@ const ServiceDetails = ({ route, navigation }) => {
         <Text style={styles.reviewButtonText}>Submit a Review</Text>
       </TouchableOpacity>
 
-      {/* Action Buttons */}
-      <View style={styles.buttonsContainer}>
-        <TouchableOpacity
-          style={[styles.messageButton, { backgroundColor: colors.primary }]}
-          onPress={handleMessage}
-        >
-          <Icon name="chatbubble-outline" size={20} color="#fff" />
-          <Text style={styles.buttonText}>Message</Text>
-        </TouchableOpacity>
+      {/* ✅ Prevent buttons from appearing until we confirm user type */}
+      {isServiceProvider === null ? (
+        <ActivityIndicator size="large" color={colors.primary} style={{ marginVertical: 20 }} />
+      ) : (
+        !isServiceProvider && user?.uid !== service.userId && (
+          <View style={styles.buttonsContainer}>
+            <TouchableOpacity
+              style={[styles.messageButton, { backgroundColor: colors.primary }]}
+              onPress={handleMessage}
+            >
+              <Icon name="chatbubble-outline" size={20} color="#fff" />
+              <Text style={styles.buttonText}>Message</Text>
+            </TouchableOpacity>
 
-        <TouchableOpacity
-          style={[styles.bookButton, { backgroundColor: "#34d399" }]}
-          onPress={handleBook}
-        >
-          <Icon name="calendar-outline" size={20} color="#fff" />
-          <Text style={styles.buttonText}>Book</Text>
-        </TouchableOpacity>
-      </View>
+            <TouchableOpacity
+              style={[styles.bookButton, { backgroundColor: "#34d399" }]}
+              onPress={handleBook}
+            >
+              <Icon name="calendar-outline" size={20} color="#fff" />
+              <Text style={styles.buttonText}>Book</Text>
+            </TouchableOpacity>
+          </View>
+        )
+      )}
     </ScrollView>
   );
 };
@@ -134,32 +160,40 @@ const styles = StyleSheet.create({
   bannerImage: {
     width: "100%",
     height: 220,
+    borderRadius: 10,
     marginBottom: 20,
   },
   detailsContainer: {
     padding: 20,
-    borderRadius: 10,
+    borderRadius: 12,
     marginHorizontal: 20,
     marginBottom: 20,
-    elevation: 2,
+    elevation: 3,
+    shadowColor: "#000",
+    shadowOpacity: 0.1,
+    shadowOffset: { width: 0, height: 2 },
+    shadowRadius: 4,
   },
   title: {
     fontSize: 24,
     fontWeight: "bold",
-    marginBottom: 15,
+    marginBottom: 12,
     textAlign: "center",
   },
   category: {
     fontSize: 16,
-    marginBottom: 10,
+    marginBottom: 8,
+    fontWeight: "600",
   },
   description: {
     fontSize: 14,
-    marginBottom: 10,
+    marginBottom: 12,
+    lineHeight: 20,
   },
   price: {
     fontSize: 14,
-    marginBottom: 10,
+    marginBottom: 12,
+    fontWeight: "bold",
   },
   buttonsContainer: {
     flexDirection: "row",
@@ -170,46 +204,30 @@ const styles = StyleSheet.create({
   messageButton: {
     flexDirection: "row",
     alignItems: "center",
-    paddingVertical: 15,
-    paddingHorizontal: 25,
+    paddingVertical: 12,
+    paddingHorizontal: 20,
     borderRadius: 10,
-    width: "45%",
+    width: "48%",
     justifyContent: "center",
+    backgroundColor: "#4A90E2", // Updated primary button color
+    shadowColor: "#000",
+    shadowOpacity: 0.1,
+    shadowOffset: { width: 0, height: 2 },
+    shadowRadius: 3,
   },
   bookButton: {
     flexDirection: "row",
     alignItems: "center",
-    paddingVertical: 15,
-    paddingHorizontal: 25,
+    paddingVertical: 12,
+    paddingHorizontal: 20,
     borderRadius: 10,
-    width: "45%",
+    width: "48%",
     justifyContent: "center",
-  },
-  reviewsContainer: {
-    marginTop: 20,
-    padding: 20,
-    borderRadius: 10,
-    marginHorizontal: 20,
-    marginBottom: 20,
-    elevation: 2,
-  },
-  reviewsTitle: {
-    fontSize: 18,
-    fontWeight: "bold",
-    marginBottom: 10,
-  },
-  reviewItem: {
-    marginBottom: 10,
-  },
-  reviewText: {
-    fontSize: 14,
-  },
-  reviewRating: {
-    fontSize: 14,
-  },
-  noReviewsText: {
-    fontSize: 14,
-    textAlign: "center",
+    backgroundColor: "#34d399", // Updated success button color
+    shadowColor: "#000",
+    shadowOpacity: 0.1,
+    shadowOffset: { width: 0, height: 2 },
+    shadowRadius: 3,
   },
   reviewButton: {
     padding: 15,
@@ -217,6 +235,11 @@ const styles = StyleSheet.create({
     alignItems: "center",
     marginHorizontal: 20,
     marginBottom: 20,
+    backgroundColor: "#7B61FF", // Updated review button color
+    shadowColor: "#000",
+    shadowOpacity: 0.1,
+    shadowOffset: { width: 0, height: 2 },
+    shadowRadius: 3,
   },
   reviewButtonText: {
     color: "#fff",
