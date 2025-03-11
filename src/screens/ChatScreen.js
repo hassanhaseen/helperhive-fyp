@@ -21,12 +21,14 @@ import {
   onSnapshot,
   serverTimestamp,
   doc,
+  getDoc,
+  getDocs,
 } from "firebase/firestore";
 import { ThemeContext } from "../context/ThemeContext";
 import Navbar from "./navbar";
 
 const ChatScreen = ({ route, navigation }) => {
-  const { recipientId, recipientName } = route.params;
+  const { recipientId, recipientName, bookingId } = route.params || {};
   const { colors, isDarkMode } = useContext(ThemeContext);
 
   const [messages, setMessages] = useState([]);
@@ -35,11 +37,15 @@ const ChatScreen = ({ route, navigation }) => {
     isOnline: false,
     lastSeen: null,
   });
+  const [bookingStatus, setBookingStatus] = useState("");
+  const [hasReviewed, setHasReviewed] = useState(false);
 
   const flatListRef = useRef();
 
   // Fetch messages
   useEffect(() => {
+    if (!recipientId) return;
+
     const messagesRef = collection(db, "messages");
 
     const q = query(
@@ -71,6 +77,8 @@ const ChatScreen = ({ route, navigation }) => {
 
   // Listen for recipient's online/lastSeen status
   useEffect(() => {
+    if (!recipientId) return;
+
     const userDocRef = doc(db, "users", recipientId);
 
     const unsubscribe = onSnapshot(userDocRef, (docSnapshot) => {
@@ -85,6 +93,25 @@ const ChatScreen = ({ route, navigation }) => {
 
     return () => unsubscribe();
   }, [recipientId]);
+
+  // Fetch booking status and check if the user has already submitted a review
+  useEffect(() => {
+    if (!bookingId) return;
+
+    const bookingDocRef = doc(db, "bookings", bookingId);
+
+    const unsubscribe = onSnapshot(bookingDocRef, (docSnapshot) => {
+      if (docSnapshot.exists()) {
+        const bookingData = docSnapshot.data();
+        setBookingStatus(bookingData.status);
+        setHasReviewed(bookingData.hasReviewed || false);
+        console.log("Booking status:", bookingData.status);
+        console.log("Has reviewed:", bookingData.hasReviewed);
+      }
+    });
+
+    return () => unsubscribe();
+  }, [recipientId, bookingId]);
 
   // Send message
   const sendMessage = async () => {
@@ -255,6 +282,22 @@ const ChatScreen = ({ route, navigation }) => {
             </TouchableOpacity>
           </View>
         </KeyboardAvoidingView>
+
+        {/* Submit Review Button */}
+        {bookingStatus === "Completed" && !hasReviewed && (
+          <TouchableOpacity
+            style={{
+              backgroundColor: "green", // Set the button color to green
+              padding: 15,
+              borderRadius: 10,
+              margin: 15,
+              alignItems: "center",
+            }}
+            onPress={() => navigation.navigate("SubmitReview", { serviceId: recipientId, bookingId })}
+          >
+            <Text style={{ color: "#fff", fontWeight: "bold" }}>Submit Review</Text>
+          </TouchableOpacity>
+        )}
 
         {/* Bottom Navbar */}
         <Navbar navigation={navigation} activeTab="Inbox" />

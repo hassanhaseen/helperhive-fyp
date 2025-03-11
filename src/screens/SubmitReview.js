@@ -12,13 +12,13 @@ import {
   ActivityIndicator,
 } from "react-native";
 import { auth, db } from "../firebase";
-import { addDoc, collection } from "firebase/firestore";
+import { addDoc, collection, doc, updateDoc } from "firebase/firestore";
 import Icon from "react-native-vector-icons/Ionicons";
 import Toast from "react-native-toast-message";
 import { ThemeContext } from "../context/ThemeContext";
 
 const SubmitReview = ({ route, navigation }) => {
-  const { serviceId } = route.params;
+  const { serviceId, bookingId } = route.params;
   const [rating, setRating] = useState(0);
   const [reviewText, setReviewText] = useState("");
   const [loading, setLoading] = useState(false);
@@ -43,10 +43,17 @@ const SubmitReview = ({ route, navigation }) => {
     try {
       await addDoc(collection(db, "reviews"), {
         serviceId,
+        bookingId,
         userId: auth.currentUser.uid,
         rating,
         text: reviewText.trim(),
         timestamp: new Date(),
+      });
+
+      // Update the booking document to set hasReviewed to true
+      const bookingDocRef = doc(db, "bookings", bookingId);
+      await updateDoc(bookingDocRef, {
+        hasReviewed: true,
       });
 
       Toast.show({

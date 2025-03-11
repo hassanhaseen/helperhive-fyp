@@ -102,6 +102,25 @@ const BookingsScreen = ({ navigation }) => {
     }
   };
 
+  const completeBooking = async (bookingId) => {
+    try {
+      await updateDoc(doc(db, "bookings", bookingId), {
+        status: "Completed",
+        isCompleted: true, // Update the isCompleted field
+      });
+      Toast.show({
+        type: "success",
+        text1: "Booking marked as completed.",
+      });
+    } catch (error) {
+      console.error("Error completing booking:", error);
+      Toast.show({
+        type: "error",
+        text1: "Failed to mark booking as completed.",
+      });
+    }
+  };
+
   const renderBooking = ({ item }) => (
     <View style={[styles.bookingItem, { backgroundColor: colors.card }]}>
       <View style={styles.bookingInfo}>
@@ -165,6 +184,19 @@ const BookingsScreen = ({ navigation }) => {
             <Text style={styles.rejectText}>Reject</Text>
           </TouchableOpacity>
         </View>
+      )}
+
+      {/* Service Provider sees "Mark as Completed" button */}
+      {item.status === "Confirmed" && item.providerId === user.uid && (
+        <TouchableOpacity
+          style={[
+            styles.completeButton,
+            { backgroundColor: colors.success || "#34d399" },
+          ]}
+          onPress={() => completeBooking(item.id)}
+        >
+          <Text style={styles.completeText}>Mark as Completed</Text>
+        </TouchableOpacity>
       )}
     </View>
   );
@@ -281,6 +313,16 @@ const styles = StyleSheet.create({
     paddingVertical: 8,
     paddingHorizontal: 16,
     borderRadius: 8,
+  },
+  completeButton: {
+    paddingVertical: 8,
+    paddingHorizontal: 16,
+    borderRadius: 8,
+    alignSelf: "flex-start",
+  },
+  completeText: {
+    color: "#fff",
+    fontWeight: "bold",
   },
   emptyText: {
     fontSize: 16,

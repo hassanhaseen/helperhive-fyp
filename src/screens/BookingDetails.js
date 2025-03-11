@@ -61,13 +61,15 @@ const BookingDetails = ({ navigation, route }) => {
       const bookingRef = await addDoc(collection(db, "bookings"), {
         userId: currentUser.uid,
         providerId: service.userId,
-        participants: [currentUser.uid, service.userId], // ✅ Include provider in participants
+        participants: [currentUser.uid, service.userId], // Include provider in participants
         serviceId: service.id,
         serviceName: service.serviceName,
         date: selectedDate,
         time: selectedTime,
         workingHours: workingHours,
         status: "Pending",
+        isCompleted: false, // Add isCompleted field
+        hasReviewed: false, // Add hasReviewed field
         createdAt: serverTimestamp(),
       });
 
@@ -75,7 +77,7 @@ const BookingDetails = ({ navigation, route }) => {
       await addDoc(collection(db, "notifications"), {
         recipientId: service.userId,
         message: `New booking request for ${service.serviceName} on ${selectedDate} at ${selectedTime}.`,
-        bookingId: bookingRef.id, // ✅ Attach booking ID for reference
+        bookingId: bookingRef.id, // Attach booking ID for reference
         createdAt: serverTimestamp(),
         read: false,
       });
@@ -184,7 +186,6 @@ const BookingDetails = ({ navigation, route }) => {
 };
 
 export default BookingDetails;
-
 
 const styles = StyleSheet.create({
   container: { flex: 1, paddingHorizontal: 20 },
