@@ -40,6 +40,7 @@ const ChatScreen = ({ route, navigation }) => {
   const [bookingStatus, setBookingStatus] = useState("");
   const [hasReviewed, setHasReviewed] = useState(false);
   const [userRole, setUserRole] = useState("");
+  const [isParticipant0, setIsParticipant0] = useState(false);
 
   const flatListRef = useRef();
 
@@ -106,9 +107,11 @@ const ChatScreen = ({ route, navigation }) => {
         const bookingData = docSnapshot.data();
         setBookingStatus(bookingData.status);
         setHasReviewed(bookingData.hasReviewed || false);
+        setIsParticipant0(bookingData.participants[0] === auth.currentUser.uid);
         console.log("Service ID:", serviceId);
         console.log("Booking status:", bookingData.status);
         console.log("Has reviewed:", bookingData.hasReviewed);
+        console.log("Is participant 0:", bookingData.participants[0] === auth.currentUser.uid);
       }
     });
 
@@ -327,7 +330,7 @@ const ChatScreen = ({ route, navigation }) => {
         </KeyboardAvoidingView>
 
         {/* Submit Review Button */}
-        {userRole === "user" && (
+        {userRole === "user" && isParticipant0 && (
           <TouchableOpacity
             style={{
               backgroundColor: "green", // Set the button color to green
