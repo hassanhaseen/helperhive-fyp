@@ -18,8 +18,9 @@ const AdminDashboard = () => {
   const [pendingServices, setPendingServices] = useState([]);
   const [availableServices, setAvailableServices] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [expanded, setExpanded] = useState({ user: null, provider: null, service: null });
+  const [expanded, setExpanded] = useState({ user: null, provider: null, service: null, allUser: null });
   const [users, setUsers] = useState([]);
+  const [allUsers, setAllUsers] = useState([]);
 
   useEffect(() => {
     setLoading(true);
@@ -30,6 +31,7 @@ const AdminDashboard = () => {
       setUsers(usersData);
       setPendingUsers(usersData.filter(user => user.requestStatus === "Pending" && !user.isServiceProvider));
       setServiceProviders(usersData.filter(user => user.isServiceProvider === true));
+      setAllUsers(usersData);
       setLoading(false);
     });
 
@@ -137,12 +139,12 @@ const AdminDashboard = () => {
           {expanded.user === user.id && (
             <View style={styles.expandedContent}>
               <Image source={{ uri: user.profileImage }} style={styles.profileImage} />
-              <Text style={styles.infoText}>Phone: {user.phone}</Text>
-              <Text style={styles.infoText}>Address: {user.address}</Text>
-              <Text style={styles.infoText}>CNIC: {user.cnicNumber}</Text>
-              <Text style={styles.infoText}>Date of Birth: {user.dateOfBirth}</Text>
-              <Image source={{ uri: user.cnicFront }} style={styles.cnicImage} />
-              <Image source={{ uri: user.cnicBack }} style={styles.cnicImage} />
+              <Text style={styles.infoText}><Text style={styles.infoLabel}>Phone:</Text> {user.phone}</Text>
+              <Text style={styles.infoText}><Text style={styles.infoLabel}>Address:</Text> {user.address}</Text>
+              <Text style={styles.infoText}><Text style={styles.infoLabel}>CNIC:</Text> {user.cnicNumber}</Text>
+              <Text style={styles.infoText}><Text style={styles.infoLabel}>Date of Birth:</Text> {user.dateOfBirth}</Text>
+              <Image source={{ uri: user.cnicFrontPath }} style={styles.cnicImage} />
+              <Image source={{ uri: user.cnicBackPath }} style={styles.cnicImage} />
               <View style={styles.buttonRow}>
                 <TouchableOpacity style={styles.approveButton} onPress={() => approveUser(user.id)}>
                   <Text style={styles.buttonText}>Approve</Text>
@@ -160,10 +162,23 @@ const AdminDashboard = () => {
       <Text style={styles.sectionTitle}>Service Providers</Text>
       {serviceProviders.length > 0 ? serviceProviders.map((provider) => (
         <View key={provider.id} style={styles.card}>
-          <Text style={styles.cardTitle}>{provider.name} - {provider.email}</Text>
-          <TouchableOpacity style={styles.rejectButton} onPress={() => deleteServiceProvider(provider.id)}>
-            <Text style={styles.buttonText}>Delete Provider</Text>
+          <TouchableOpacity onPress={() => toggleExpand("provider", provider.id)}>
+            <Text style={styles.cardTitle}>{provider.name} - {provider.email}</Text>
           </TouchableOpacity>
+          {expanded.provider === provider.id && (
+            <View style={styles.expandedContent}>
+              <Image source={{ uri: provider.profileImage }} style={styles.profileImage} />
+              <Text style={styles.infoText}><Text style={styles.infoLabel}>Phone:</Text> {provider.phone}</Text>
+              <Text style={styles.infoText}><Text style={styles.infoLabel}>Address:</Text> {provider.address}</Text>
+              <Text style={styles.infoText}><Text style={styles.infoLabel}>CNIC:</Text> {provider.cnicNumber}</Text>
+              <Text style={styles.infoText}><Text style={styles.infoLabel}>Date of Birth:</Text> {provider.dateOfBirth}</Text>
+              <Image source={{ uri: provider.cnicFrontPath }} style={styles.cnicImage} />
+              <Image source={{ uri: provider.cnicBackPath }} style={styles.cnicImage} />
+              <TouchableOpacity style={styles.rejectButton} onPress={() => deleteServiceProvider(provider.id)}>
+                <Text style={styles.buttonText}>Delete Provider</Text>
+              </TouchableOpacity>
+            </View>
+          )}
         </View>
       )) : <Text style={styles.noDataText}>No Service Providers</Text>}
 
@@ -179,14 +194,14 @@ const AdminDashboard = () => {
             <Text style={styles.infoText}>Availability: {service.availability}</Text>
             {requestedBy && (
               <>
-                <Text style={styles.infoText}>Requested by: {requestedBy.name} - {requestedBy.email}</Text>
+                <Text style={styles.infoText}><Text style={styles.infoLabel}>Requested by:</Text> {requestedBy.name} - {requestedBy.email}</Text>
                 <Image source={{ uri: requestedBy.profileImage }} style={styles.profileImage} />
-                <Text style={styles.infoText}>Phone: {requestedBy.phone}</Text>
-                <Text style={styles.infoText}>Address: {requestedBy.address}</Text>
-                <Text style={styles.infoText}>CNIC: {requestedBy.cnicNumber}</Text>
-                <Text style={styles.infoText}>Date of Birth: {requestedBy.dateOfBirth}</Text>
-                <Image source={{ uri: requestedBy.cnicFront }} style={styles.cnicImage} />
-                <Image source={{ uri: requestedBy.cnicBack }} style={styles.cnicImage} />
+                <Text style={styles.infoText}><Text style={styles.infoLabel}>Phone:</Text> {requestedBy.phone}</Text>
+                <Text style={styles.infoText}><Text style={styles.infoLabel}>Address:</Text> {requestedBy.address}</Text>
+                <Text style={styles.infoText}><Text style={styles.infoLabel}>CNIC:</Text> {requestedBy.cnicNumber}</Text>
+                <Text style={styles.infoText}><Text style={styles.infoLabel}>Date of Birth:</Text> {requestedBy.dateOfBirth}</Text>
+                <Image source={{ uri: requestedBy.cnicFrontPath }} style={styles.cnicImage} />
+                <Image source={{ uri: requestedBy.cnicBackPath }} style={styles.cnicImage} />
               </>
             )}
             <View style={styles.buttonRow}>
@@ -216,6 +231,28 @@ const AdminDashboard = () => {
           </View>
         </View>
       )) : <Text style={styles.noDataText}>No Available Services</Text>}
+
+      {/* All Users of HelperHive */}
+      <Text style={styles.sectionTitle}>All Users of HelperHive</Text>
+      <Text style={styles.infoText}>Total Users: {allUsers.length}</Text>
+      {allUsers.length > 0 ? allUsers.map((user) => (
+        <View key={user.id} style={styles.card}>
+          <TouchableOpacity onPress={() => toggleExpand("allUser", user.id)}>
+            <Text style={styles.cardTitle}>{user.name} - {user.email}</Text>
+          </TouchableOpacity>
+          {expanded.allUser === user.id && (
+            <View style={styles.expandedContent}>
+              <Image source={{ uri: user.profileImage }} style={styles.profileImage} />
+              <Text style={styles.infoText}><Text style={styles.infoLabel}>Phone:</Text> {user.phone}</Text>
+              <Text style={styles.infoText}><Text style={styles.infoLabel}>Address:</Text> {user.address}</Text>
+              <Text style={styles.infoText}><Text style={styles.infoLabel}>CNIC:</Text> {user.cnicNumber}</Text>
+              <Text style={styles.infoText}><Text style={styles.infoLabel}>Date of Birth:</Text> {user.dateOfBirth}</Text>
+              <Image source={{ uri: user.cnicFrontPath }} style={styles.cnicImage} />
+              <Image source={{ uri: user.cnicBackPath }} style={styles.cnicImage} />
+            </View>
+          )}
+        </View>
+      )) : <Text style={styles.noDataText}>No Users Found</Text>}
     </ScrollView>
   );
 };
@@ -236,5 +273,7 @@ const styles = StyleSheet.create({
   suspendButton: { backgroundColor: "#FFA500", padding: 10, borderRadius: 5, alignItems: "center", flex: 1, marginLeft: 5 },
   profileImage: { width: 80, height: 80, borderRadius: 40, marginVertical: 10 },
   cnicImage: { width: 150, height: 90, marginVertical: 5, borderRadius: 5 },
-  noDataText: { textAlign: "center", fontSize: 14, color: "#888", marginVertical: 10 }
+  noDataText: { textAlign: "center", fontSize: 14, color: "#888", marginVertical: 10 },
+  infoText: { fontSize: 14, color: "#333", marginVertical: 2 },
+  infoLabel: { fontWeight: "bold", color: "#4a90e2" },
 });
