@@ -138,7 +138,11 @@ const AdminDashboard = () => {
           </TouchableOpacity>
           {expanded.user === user.id && (
             <View style={styles.expandedContent}>
-              <Image source={{ uri: user.profileImage }} style={styles.profileImage} />
+              <Image 
+                source={{ uri: user.userAvatar || "https://cdn-icons-png.flaticon.com/512/9187/9187604.png" }} 
+                style={styles.userAvatar} 
+                onError={(e) => console.log("Error loading avatar:", e.nativeEvent.error)}
+              />
               <Text style={styles.infoText}><Text style={styles.infoLabel}>Phone:</Text> {user.phone}</Text>
               <Text style={styles.infoText}><Text style={styles.infoLabel}>Address:</Text> {user.address}</Text>
               <Text style={styles.infoText}><Text style={styles.infoLabel}>CNIC:</Text> {user.cnicNumber}</Text>
@@ -167,7 +171,11 @@ const AdminDashboard = () => {
           </TouchableOpacity>
           {expanded.provider === provider.id && (
             <View style={styles.expandedContent}>
-              <Image source={{ uri: provider.profileImage }} style={styles.profileImage} />
+              <Image 
+                source={{ uri: provider.userAvatar || "https://cdn-icons-png.flaticon.com/512/9187/9187604.png" }} 
+                style={styles.userAvatar} 
+                onError={(e) => console.log("Error loading avatar:", e.nativeEvent.error)}
+              />
               <Text style={styles.infoText}><Text style={styles.infoLabel}>Phone:</Text> {provider.phone}</Text>
               <Text style={styles.infoText}><Text style={styles.infoLabel}>Address:</Text> {provider.address}</Text>
               <Text style={styles.infoText}><Text style={styles.infoLabel}>CNIC:</Text> {provider.cnicNumber}</Text>
@@ -242,7 +250,11 @@ const AdminDashboard = () => {
           </TouchableOpacity>
           {expanded.allUser === user.id && (
             <View style={styles.expandedContent}>
-              <Image source={{ uri: user.profileImage }} style={styles.profileImage} />
+              <Image 
+                source={{ uri: user.userAvatar || "https://cdn-icons-png.flaticon.com/512/9187/9187604.png" }} 
+                style={styles.userAvatar} 
+                onError={(e) => console.log("Error loading avatar:", e.nativeEvent.error)}
+              />
               <Text style={styles.infoText}><Text style={styles.infoLabel}>Phone:</Text> {user.phone}</Text>
               <Text style={styles.infoText}><Text style={styles.infoLabel}>Address:</Text> {user.address}</Text>
               <Text style={styles.infoText}><Text style={styles.infoLabel}>CNIC:</Text> {user.cnicNumber}</Text>
@@ -271,7 +283,7 @@ const styles = StyleSheet.create({
   approveButton: { backgroundColor: "#4CAF50", padding: 10, borderRadius: 5, alignItems: "center", flex: 1, marginRight: 5 },
   rejectButton: { backgroundColor: "#f44336", padding: 10, borderRadius: 5, alignItems: "center", flex: 1, marginLeft: 5 },
   suspendButton: { backgroundColor: "#FFA500", padding: 10, borderRadius: 5, alignItems: "center", flex: 1, marginLeft: 5 },
-  profileImage: { width: 80, height: 80, borderRadius: 40, marginVertical: 10 },
+  userAvatar: { width: 80, height: 80, borderRadius: 40, marginVertical: 10 },
   cnicImage: { width: 150, height: 90, marginVertical: 5, borderRadius: 5 },
   noDataText: { textAlign: "center", fontSize: 14, color: "#888", marginVertical: 10 },
   infoText: { fontSize: 14, color: "#333", marginVertical: 2 },
