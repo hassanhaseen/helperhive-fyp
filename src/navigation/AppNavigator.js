@@ -21,6 +21,7 @@ import AdminDashboard from "../screens/AdminDashboard";
 import PrivacyPolicyPage from "../screens/PrivacyPolicyPage";
 import HelpCenterPage from "../screens/HelpCenterPage";
 import FAQAnswerScreen from '../screens/FAQAnswerScreen';
+import BookingDetails from "../screens/BookingDetails";
 
 
 // Import User Context
@@ -65,6 +66,8 @@ const AppNavigator = () => {
         <Stack.Screen name="PrivacyPolicyPage" component={PrivacyPolicyPage} />
         <Stack.Screen name="HelpCenterPage" component={HelpCenterPage} />
         <Stack.Screen name="FAQAnswer" component={FAQAnswerScreen} />
+        <Stack.Screen name="BookingDetails" component={BookingDetails} />
+
 
       </Stack.Navigator>
     </NavigationContainer>

@@ -6,9 +6,7 @@ import {
   ScrollView,
   TouchableOpacity,
   Image,
-  Platform,
 } from "react-native";
-import DateTimePicker from "@react-native-community/datetimepicker";
 import Icon from "react-native-vector-icons/Ionicons";
 import { collection, query, where, onSnapshot } from "firebase/firestore";
 import { db } from "../firebase";
@@ -17,10 +15,7 @@ import { ThemeContext } from "../context/ThemeContext";
 
 const ServiceDetails = ({ route, navigation }) => {
   const { service } = route.params;
-  const { colors, isDarkMode } = useContext(ThemeContext);
-
-  const [date, setDate] = useState(new Date());
-  const [showPicker, setShowPicker] = useState(false);
+  const { colors } = useContext(ThemeContext);
   const [reviews, setReviews] = useState([]);
 
   useEffect(() => {
@@ -49,32 +44,7 @@ const ServiceDetails = ({ route, navigation }) => {
   };
 
   const handleBook = () => {
-    if (!service) {
-      Toast.show({
-        type: "error",
-        text1: "Error",
-        text2: "Service details are missing.",
-      });
-      return;
-    }
-    if (!date) {
-      Toast.show({
-        type: "error",
-        text1: "Error",
-        text2: "Please select a date and time.",
-      });
-      return;
-    }
-    navigation.navigate("Bookings", { service, selectedDate: date });
-  };
-
-  const onChange = (event, selectedDate) => {
-    if (Platform.OS === "android") {
-      setShowPicker(false);
-    }
-    if (selectedDate) {
-      setDate(selectedDate);
-    }
+    navigation.navigate("BookingDetails", { service });
   };
 
   return (
@@ -106,35 +76,9 @@ const ServiceDetails = ({ route, navigation }) => {
           <Icon name="cash-outline" size={18} color={colors.primary} /> Price Range:{" "}
           {service.priceRange || "Not Specified"}
         </Text>
-
-        <Text style={[styles.availability, { color: colors.primary }]}>
-          <Icon name="calendar-outline" size={18} color={colors.primary} /> Availability:{" "}
-          {service.availability || "Not Specified"}
-        </Text>
       </View>
 
-      <View style={styles.datePickerContainer}>
-        <Text style={[styles.dateText, { color: colors.text }]}>
-          Selected Time: {date.toLocaleString()}
-        </Text>
-        <TouchableOpacity
-          style={[styles.dateButton, { backgroundColor: colors.primary }]}
-          onPress={() => setShowPicker(true)}
-        >
-          <Icon name="calendar-outline" size={20} color="#fff" />
-          <Text style={styles.buttonText}>Select Date & Time</Text>
-        </TouchableOpacity>
-      </View>
-
-      {showPicker && (
-        <DateTimePicker
-          value={date}
-          mode="datetime"
-          display={Platform.OS === "ios" ? "spinner" : "default"}
-          onChange={onChange}
-        />
-      )}
-
+      {/* Reviews Section */}
       <View style={[styles.reviewsContainer, { backgroundColor: colors.card }]}>
         <Text style={[styles.reviewsTitle, { color: colors.text }]}>Reviews</Text>
         {reviews.length > 0 ? (
@@ -151,6 +95,7 @@ const ServiceDetails = ({ route, navigation }) => {
         )}
       </View>
 
+      {/* Submit Review Button */}
       <TouchableOpacity
         style={[styles.reviewButton, { backgroundColor: colors.primary }]}
         onPress={() => navigation.navigate("SubmitReview", { serviceId: service.id })}
@@ -158,6 +103,7 @@ const ServiceDetails = ({ route, navigation }) => {
         <Text style={styles.reviewButtonText}>Submit a Review</Text>
       </TouchableOpacity>
 
+      {/* Action Buttons */}
       <View style={styles.buttonsContainer}>
         <TouchableOpacity
           style={[styles.messageButton, { backgroundColor: colors.primary }]}
@@ -214,31 +160,6 @@ const styles = StyleSheet.create({
   price: {
     fontSize: 14,
     marginBottom: 10,
-  },
-  availability: {
-    fontSize: 14,
-    marginBottom: 10,
-  },
-  datePickerContainer: {
-    alignItems: "center",
-    marginBottom: 15,
-  },
-  dateText: {
-    fontSize: 16,
-    marginBottom: 10,
-  },
-  dateButton: {
-    flexDirection: "row",
-    alignItems: "center",
-    paddingVertical: 10,
-    paddingHorizontal: 15,
-    borderRadius: 10,
-  },
-  buttonText: {
-    color: "#fff",
-    marginLeft: 10,
-    fontWeight: "bold",
-    fontSize: 16,
   },
   buttonsContainer: {
     flexDirection: "row",
