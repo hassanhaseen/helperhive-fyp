@@ -76,6 +76,7 @@ const HomePage = ({ navigation }) => {
           ...doc.data(),
         }));
 
+        // Filter services to only include those with status "Approved"
         const approvedServices = servicesData.filter(
           (service) => service.status === "Approved"
         );

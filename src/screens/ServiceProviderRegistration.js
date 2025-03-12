@@ -77,7 +77,7 @@ const ServiceProviderForm = ({ navigation }) => {
       const userSnap = await getDoc(userRef);
       const userData = userSnap.exists() ? userSnap.data() : {};
 
-      // Add the new service request with category-based filtering
+      // Add the new service request with status set to "Pending"
       await addDoc(collection(db, "services"), {
         userId,
         serviceName,
@@ -94,7 +94,7 @@ const ServiceProviderForm = ({ navigation }) => {
         await setDoc(userRef, { requestStatus: "Pending" }, { merge: true });
       }
 
-      Alert.alert("Success", "Your service request has been submitted!");
+      Alert.alert("Success", "Your service request has been submitted and is pending approval!");
       navigation.navigate("Profile");
     } catch (error) {
       console.error("Error submitting service:", error);
