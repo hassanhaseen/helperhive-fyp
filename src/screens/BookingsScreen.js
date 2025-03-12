@@ -35,10 +35,9 @@ const BookingsScreen = ({ navigation }) => {
 
     const bookingsRef = collection(db, "bookings");
 
-    // Fetch bookings where user is either a customer or service provider
     const q = query(
       bookingsRef,
-      where("participants", "array-contains", user.uid) // Fetch bookings where the user is involved
+      where("participants", "array-contains", user.uid)
     );
 
     const unsubscribe = onSnapshot(q, (snapshot) => {
@@ -106,7 +105,7 @@ const BookingsScreen = ({ navigation }) => {
     try {
       await updateDoc(doc(db, "bookings", bookingId), {
         status: "Completed",
-        isCompleted: true, // Update the isCompleted field
+        isCompleted: true,
       });
       Toast.show({
         type: "success",
@@ -128,28 +127,23 @@ const BookingsScreen = ({ navigation }) => {
           {item.serviceName}
         </Text>
 
-        {/* Display Date of Service */}
         <Text style={[styles.dateText, { color: colors.text }]}>
           📅 Date: {item.date}
         </Text>
 
-        {/* Display Start Time */}
         <Text style={[styles.dateText, { color: colors.text }]}>
           ⏰ Time: {item.time}
         </Text>
 
-        {/* Display Total Hours of Work */}
         <Text style={[styles.dateText, { color: colors.text }]}>
           ⏳ Total Hours: {item.workingHours} hrs
         </Text>
 
-        {/* Display Booking Status */}
         <Text style={[styles.status, styles[item.status]]}>
           {item.status}
         </Text>
       </View>
 
-      {/* User (Customer) can only cancel the booking */}
       {item.status === "Pending" && item.userId === user.uid && (
         <TouchableOpacity
           style={[
@@ -162,7 +156,6 @@ const BookingsScreen = ({ navigation }) => {
         </TouchableOpacity>
       )}
 
-      {/* Service Provider sees "Accept" & "Reject" buttons */}
       {item.status === "Pending" && item.providerId === user.uid && (
         <View style={styles.actionButtons}>
           <TouchableOpacity
@@ -186,7 +179,6 @@ const BookingsScreen = ({ navigation }) => {
         </View>
       )}
 
-      {/* Service Provider sees "Mark as Completed" button */}
       {item.status === "Confirmed" && item.providerId === user.uid && (
         <TouchableOpacity
           style={[
@@ -212,29 +204,33 @@ const BookingsScreen = ({ navigation }) => {
   }
 
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: colors.background }}>
+    <SafeAreaView style={styles.safeArea}>
       <StatusBar
         backgroundColor={colors.background}
         barStyle={isDarkMode ? "light-content" : "dark-content"}
       />
 
-      <View style={{ flex: 1, backgroundColor: colors.background }}>
-        <Text style={[styles.headerTitle, { color: colors.primary }]}>
-          Your Bookings
-        </Text>
-
-        {bookings.length === 0 ? (
-          <Text style={[styles.emptyText, { color: colors.text }]}>
-            No bookings found
-          </Text>
-        ) : (
-          <FlatList
-            data={bookings}
-            keyExtractor={(item) => item.id}
-            renderItem={renderBooking}
-            contentContainerStyle={{ paddingBottom: 90 }}
-          />
-        )}
+      <View style={styles.container}>
+        <FlatList
+          ListHeaderComponent={
+            <Text style={[styles.headerTitle, { color: colors.primary }]}>
+              Your Bookings
+            </Text>
+          }
+          data={bookings}
+          keyExtractor={(item) => item.id}
+          renderItem={renderBooking}
+          contentContainerStyle={
+            bookings.length === 0
+              ? styles.emptyContainer
+              : { paddingBottom: 100 }
+          }
+          ListEmptyComponent={
+            <Text style={[styles.emptyText, { color: colors.text }]}>
+              No bookings found
+            </Text>
+          }
+        />
 
         <Navbar navigation={navigation} activeTab="Bookings" />
       </View>
@@ -245,6 +241,14 @@ const BookingsScreen = ({ navigation }) => {
 export default BookingsScreen;
 
 const styles = StyleSheet.create({
+  safeArea: {
+    flex: 1,
+  },
+  container: {
+    flex: 1,
+    justifyContent: "space-between",
+    backgroundColor: "#fff",
+  },
   loaderContainer: {
     flex: 1,
     justifyContent: "center",
@@ -253,12 +257,13 @@ const styles = StyleSheet.create({
   headerTitle: {
     fontSize: 24,
     fontWeight: "bold",
-    marginBottom: 20,
+    marginVertical: 20,
     textAlign: "center",
   },
   bookingItem: {
     borderRadius: 12,
     padding: 15,
+    marginHorizontal: 16,
     marginBottom: 15,
     elevation: 3,
   },
@@ -324,9 +329,13 @@ const styles = StyleSheet.create({
     color: "#fff",
     fontWeight: "bold",
   },
+  emptyContainer: {
+    flexGrow: 1,
+    justifyContent: "center",
+    alignItems: "center",
+  },
   emptyText: {
     fontSize: 16,
     textAlign: "center",
-    marginTop: 100,
   },
 });
