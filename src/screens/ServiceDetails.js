@@ -18,7 +18,7 @@ const ServiceDetails = ({ route, navigation }) => {
   const { service } = route.params;
   const { colors } = useContext(ThemeContext);
   const [reviews, setReviews] = useState([]);
-  const [isServiceProvider, setIsServiceProvider] = useState(null); // Initial state as null (not false)
+  const [isServiceProvider, setIsServiceProvider] = useState(null);
   const user = auth.currentUser;
 
   useEffect(() => {
@@ -67,6 +67,26 @@ const ServiceDetails = ({ route, navigation }) => {
     navigation.navigate("BookingDetails", { service });
   };
 
+  // ⭐ Generate stars dynamically based on rating
+  const renderStars = (rating) => {
+    const filledStars = Math.round(rating);
+    const emptyStars = 5 - filledStars;
+    return (
+      <>
+        {Array(filledStars)
+          .fill()
+          .map((_, i) => (
+            <Icon key={`filled-${i}`} name="star" size={18} color="#FFD700" />
+          ))}
+        {Array(emptyStars)
+          .fill()
+          .map((_, i) => (
+            <Icon key={`empty-${i}`} name="star-outline" size={18} color="#FFD700" />
+          ))}
+      </>
+    );
+  };
+
   return (
     <ScrollView style={[styles.container, { backgroundColor: colors.background }]}>
       <Image
@@ -94,7 +114,7 @@ const ServiceDetails = ({ route, navigation }) => {
 
         <Text style={[styles.price, { color: colors.primary }]}>
           <Icon name="cash-outline" size={18} color={colors.primary} /> Price Range:{" "}
-          {service.priceRange || "Not Specified"}
+          {service.priceRange ? `${service.priceRange} PKR` : "Not Specified"}
         </Text>
       </View>
 
@@ -105,9 +125,7 @@ const ServiceDetails = ({ route, navigation }) => {
           reviews.map((review, index) => (
             <View key={index} style={styles.reviewItem}>
               <Text style={[styles.reviewText, { color: colors.text }]}>{review.text}</Text>
-              <Text style={[styles.reviewRating, { color: colors.primary }]}>
-                Rating: {review.rating}
-              </Text>
+              <View style={styles.starsContainer}>{renderStars(review.rating)}</View>
             </View>
           ))
         ) : (
@@ -115,7 +133,6 @@ const ServiceDetails = ({ route, navigation }) => {
         )}
       </View>
 
-      {/* ✅ Prevent buttons from appearing until we confirm user type */}
       {isServiceProvider === null ? (
         <ActivityIndicator size="large" color={colors.primary} style={{ marginVertical: 20 }} />
       ) : (
@@ -138,20 +155,6 @@ const ServiceDetails = ({ route, navigation }) => {
             </TouchableOpacity>
           </View>
         )
-      )}
-
-      {!isServiceProvider && user?.uid !== service.userId && (
-        <TouchableOpacity
-          style={styles.reviewButton}
-          onPress={() =>
-            navigation.navigate("CreateTicket", {
-              providerId: service.userId,
-              serviceId: service.id,
-            })
-          }
-        >
-          <Text style={styles.reviewButtonText}>Report / Dispute</Text>
-        </TouchableOpacity>
       )}
     </ScrollView>
   );
@@ -201,6 +204,40 @@ const styles = StyleSheet.create({
     marginBottom: 12,
     fontWeight: "bold",
   },
+  reviewsContainer: {
+    padding: 20,
+    borderRadius: 12,
+    marginHorizontal: 20,
+    marginBottom: 20,
+    elevation: 3,
+    shadowColor: "#000",
+    shadowOpacity: 0.1,
+    shadowOffset: { width: 0, height: 2 },
+    shadowRadius: 4,
+  },
+  reviewsTitle: {
+    fontSize: 20,
+    fontWeight: "bold",
+    marginBottom: 15,
+    textAlign: "center",
+  },
+  reviewItem: {
+    marginBottom: 15,
+    borderBottomWidth: 0.5,
+    borderBottomColor: '#ddd',
+    paddingBottom: 10,
+  },
+  reviewText: {
+    fontSize: 14,
+    marginBottom: 5,
+  },
+  starsContainer: {
+    flexDirection: 'row',
+  },
+  noReviewsText: {
+    fontSize: 14,
+    textAlign: 'center',
+  },
   buttonsContainer: {
     flexDirection: "row",
     justifyContent: "space-between",
@@ -215,7 +252,6 @@ const styles = StyleSheet.create({
     borderRadius: 10,
     width: "48%",
     justifyContent: "center",
-    backgroundColor: "#4A90E2", // Updated primary button color
     shadowColor: "#000",
     shadowOpacity: 0.1,
     shadowOffset: { width: 0, height: 2 },
@@ -229,27 +265,15 @@ const styles = StyleSheet.create({
     borderRadius: 10,
     width: "48%",
     justifyContent: "center",
-    backgroundColor: "#34d399", // Updated success button color
     shadowColor: "#000",
     shadowOpacity: 0.1,
     shadowOffset: { width: 0, height: 2 },
     shadowRadius: 3,
   },
-  reviewButton: {
-    padding: 15,
-    borderRadius: 10,
-    alignItems: "center",
-    marginHorizontal: 20,
-    marginBottom: 20,
-    backgroundColor: "#7B61FF", // Updated review button color
-    shadowColor: "#000",
-    shadowOpacity: 0.1,
-    shadowOffset: { width: 0, height: 2 },
-    shadowRadius: 3,
-  },
-  reviewButtonText: {
+  buttonText: {
     color: "#fff",
     fontSize: 16,
     fontWeight: "bold",
+    marginLeft: 8,
   },
 });

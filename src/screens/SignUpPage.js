@@ -4,8 +4,8 @@ import {
   TextInput,
   TouchableOpacity,
   Text,
-  Dimensions,
   ActivityIndicator,
+  View,
 } from 'react-native';
 import {
   createUserWithEmailAndPassword,
@@ -16,12 +16,11 @@ import { getFirestore, doc, setDoc } from 'firebase/firestore';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Image } from 'react-native-animatable';
 import Toast from 'react-native-toast-message';
+import { Ionicons } from '@expo/vector-icons';
 
 import { auth } from '../firebase';
 import logo from '../assets/logo.png';
 import { UserContext } from '../context/UserContext';
-
-const { width } = Dimensions.get('window');
 
 const SignUpPage = ({ navigation }) => {
   const [name, setName] = useState('');
@@ -30,78 +29,43 @@ const SignUpPage = ({ navigation }) => {
   const [confirmPassword, setConfirmPassword] = useState('');
   const [loading, setLoading] = useState(false);
 
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+
   const { setUser } = useContext(UserContext);
   const db = getFirestore();
 
+  const isNameValid = name.trim().length > 0;
+  const isEmailValid = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
+  const isPasswordValid = /^(?=.*[A-Z])(?=.*[!@#$%^&*()_+\-=[\]{};':"\\|,.<>/?]).{8,}$/.test(password);
+  const isConfirmPasswordValid = password === confirmPassword && confirmPassword !== '';
+
+  const isFormValid = isNameValid && isEmailValid && isPasswordValid && isConfirmPasswordValid;
+
   const handleSignUp = async () => {
-    // Basic validations
-    if (!name || !email || !password || !confirmPassword) {
-      Toast.show({
-        type: 'error',
-        text1: 'Missing Fields',
-        text2: 'Please fill out all fields.',
-      });
-      return;
-    }
-
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    if (!emailRegex.test(email)) {
-      Toast.show({
-        type: 'error',
-        text1: 'Invalid Email',
-        text2: 'Please enter a valid email address.',
-      });
-      return;
-    }
-
-    if (password.length < 6) {
-      Toast.show({
-        type: 'error',
-        text1: 'Weak Password',
-        text2: 'Password must be at least 6 characters long.',
-      });
-      return;
-    }
-
-    if (password !== confirmPassword) {
-      Toast.show({
-        type: 'error',
-        text1: 'Passwords Do Not Match',
-        text2: 'Please make sure both passwords match.',
-      });
-      return;
-    }
-
     try {
       setLoading(true);
 
-      // Firebase Authentication - Create new user
       const userCredential = await createUserWithEmailAndPassword(auth, email, password);
       const user = userCredential.user;
 
-      // Update display name
       await updateProfile(user, { displayName: name });
-
-      // Send email verification
       await sendEmailVerification(user);
 
-      // Create user document in Firestore
       await setDoc(doc(db, 'users', user.uid), {
         uid: user.uid,
         name,
         email,
-        role: 'customer', // or 'provider' if you add logic
+        role: 'customer',
         createdAt: new Date(),
       });
 
-      // Don't setUser(user) because we are not logging in yet
       Toast.show({
         type: 'success',
         text1: 'Registration Successful!',
         text2: 'Please check your inbox to verify your email before signing in.',
       });
 
-      // Navigate back to SignIn page (use correct route name!)
       navigation.navigate('SignIn');
     } catch (error) {
       console.log(error);
@@ -124,46 +88,62 @@ const SignUpPage = ({ navigation }) => {
   };
 
   return (
-    <LinearGradient colors={['#FF7E5F', '#FD3A69']} style={styles.container}>
+    <LinearGradient colors={['#4a90e2', '#005bea']} style={styles.container}>
       <Image source={logo} style={styles.logo} animation="bounceIn" duration={1500} />
 
+      <Text style={styles.title}>Create Account</Text>
+
       <TextInput
-        style={styles.input}
+        style={[styles.input, !isNameValid && name !== '' ? styles.inputError : null]}
         placeholder="Name"
-        placeholderTextColor="#ccc"
+        placeholderTextColor="#aaa"
         value={name}
         onChangeText={setName}
       />
 
       <TextInput
-        style={styles.input}
+        style={[styles.input, !isEmailValid && email !== '' ? styles.inputError : null]}
         placeholder="Email"
-        placeholderTextColor="#ccc"
+        placeholderTextColor="#aaa"
         value={email}
         onChangeText={setEmail}
         keyboardType="email-address"
         autoCapitalize="none"
       />
 
-      <TextInput
-        style={styles.input}
-        placeholder="Password"
-        placeholderTextColor="#ccc"
-        value={password}
-        onChangeText={setPassword}
-        secureTextEntry
-      />
+      <View style={styles.inputWrapper}>
+        <TextInput
+          style={[styles.input, !isPasswordValid && password !== '' ? styles.inputError : null, { paddingRight: 45 }]}
+          placeholder="Password"
+          placeholderTextColor="#aaa"
+          value={password}
+          onChangeText={setPassword}
+          secureTextEntry={!showPassword}
+        />
+        <TouchableOpacity style={styles.eyeIcon} onPress={() => setShowPassword(!showPassword)}>
+          <Ionicons name={showPassword ? 'eye' : 'eye-off'} size={22} color="#333" />
+        </TouchableOpacity>
+      </View>
 
-      <TextInput
-        style={styles.input}
-        placeholder="Confirm Password"
-        placeholderTextColor="#ccc"
-        value={confirmPassword}
-        onChangeText={setConfirmPassword}
-        secureTextEntry
-      />
+      <View style={styles.inputWrapper}>
+        <TextInput
+          style={[styles.input, !isConfirmPasswordValid && confirmPassword !== '' ? styles.inputError : null, { paddingRight: 45 }]}
+          placeholder="Confirm Password"
+          placeholderTextColor="#aaa"
+          value={confirmPassword}
+          onChangeText={setConfirmPassword}
+          secureTextEntry={!showConfirmPassword}
+        />
+        <TouchableOpacity style={styles.eyeIcon} onPress={() => setShowConfirmPassword(!showConfirmPassword)}>
+          <Ionicons name={showConfirmPassword ? 'eye' : 'eye-off'} size={22} color="#333" />
+        </TouchableOpacity>
+      </View>
 
-      <TouchableOpacity style={styles.button} onPress={handleSignUp} disabled={loading}>
+      <TouchableOpacity
+        style={[styles.button, !isFormValid && styles.disabledButton]}
+        onPress={handleSignUp}
+        disabled={!isFormValid || loading}
+      >
         {loading ? (
           <ActivityIndicator color="#fff" />
         ) : (
@@ -181,32 +161,60 @@ const SignUpPage = ({ navigation }) => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    paddingHorizontal: 20,
     justifyContent: 'center',
     alignItems: 'center',
+    padding: 20,
   },
   logo: {
-    width: 150,
-    height: 150,
-    marginBottom: 40,
+    width: 120,
+    height: 120,
+    marginBottom: 20,
+    borderRadius: 60,
+  },
+  title: {
+    fontSize: 24,
+    fontWeight: 'bold',
+    color: '#fff',
+    marginBottom: 20,
   },
   input: {
     width: '100%',
+    height: 50,
+    borderColor: '#ddd',
+    borderWidth: 1,
+    borderRadius: 5,
+    paddingHorizontal: 10,
+    marginBottom: 15,
     backgroundColor: '#fff',
-    padding: 15,
-    marginVertical: 10,
-    borderRadius: 10,
+  },
+  inputError: {
+    borderColor: 'red',
+  },
+  inputWrapper: {
+    width: '100%',
+    position: 'relative',
+    marginBottom: 15,
+  },
+  eyeIcon: {
+    position: 'absolute',
+    right: 15,
+    top: 13,
   },
   button: {
-    backgroundColor: '#FF416C',
     width: '100%',
-    padding: 15,
+    height: 50,
+    backgroundColor: '#4a90e2',
+    justifyContent: 'center',
     alignItems: 'center',
-    borderRadius: 10,
-    marginTop: 10,
+    borderRadius: 5,
+    marginBottom: 15,
+  },
+  disabledButton: {
+    backgroundColor: '#999',
   },
   buttonText: {
     color: '#fff',
+    fontSize: 18,
     fontWeight: 'bold',
   },
   link: {

@@ -4,14 +4,13 @@ import {
   TextInput,
   TouchableOpacity,
   Text,
-  View,
   ActivityIndicator,
 } from 'react-native';
 import { getAuth, signInWithEmailAndPassword } from 'firebase/auth';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Image } from 'react-native-animatable';
 import { CommonActions } from '@react-navigation/native';
-import Toast from 'react-native-toast-message'; // Toast for notifications
+import Toast from 'react-native-toast-message';
 
 import logo from '../assets/logo.png';
 import { UserContext } from '../context/UserContext';
@@ -25,7 +24,6 @@ const SignInPage = ({ navigation }) => {
   const { setUser } = useContext(UserContext);
 
   const handleSignIn = async () => {
-    // Validation checks
     if (!email || !password) {
       Toast.show({
         type: 'error',
@@ -61,7 +59,6 @@ const SignInPage = ({ navigation }) => {
         return;
       }
 
-      // Set user context
       setUser(user);
 
       Toast.show({
@@ -70,7 +67,6 @@ const SignInPage = ({ navigation }) => {
         text2: `Logged in as ${user.email}`,
       });
 
-      // Navigate to Home and reset the navigation stack
       navigation.dispatch(
         CommonActions.reset({
           index: 0,
@@ -78,7 +74,7 @@ const SignInPage = ({ navigation }) => {
         })
       );
     } catch (error) {
-      let errorMsg = 'An error occurred during sign-in.';
+      let errorMsg = 'Invalid Credentials.';
 
       if (error.code === 'auth/user-not-found') {
         errorMsg = 'No user found with this email.';
@@ -99,13 +95,15 @@ const SignInPage = ({ navigation }) => {
   };
 
   return (
-    <LinearGradient colors={['#FF7E5F', '#FD3A69']} style={styles.container}>
+    <LinearGradient colors={['#4a90e2', '#005bea']} style={styles.container}>
       <Image source={logo} style={styles.logo} animation="bounceIn" duration={1500} />
+
+      <Text style={styles.title}>Welcome Back!</Text>
 
       <TextInput
         style={styles.input}
         placeholder="Email"
-        placeholderTextColor="#ccc"
+        placeholderTextColor="#aaa"
         value={email}
         onChangeText={setEmail}
         keyboardType="email-address"
@@ -115,7 +113,7 @@ const SignInPage = ({ navigation }) => {
       <TextInput
         style={styles.input}
         placeholder="Password"
-        placeholderTextColor="#ccc"
+        placeholderTextColor="#aaa"
         value={password}
         onChangeText={setPassword}
         secureTextEntry
@@ -143,32 +141,44 @@ const SignInPage = ({ navigation }) => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    paddingHorizontal: 20,
     justifyContent: 'center',
     alignItems: 'center',
+    padding: 20,
   },
   logo: {
-    width: 150,
-    height: 150,
-    marginBottom: 40,
+    width: 120,
+    height: 120,
+    marginBottom: 20,
+    borderRadius: 60,
+  },
+  title: {
+    fontSize: 24,
+    fontWeight: 'bold',
+    color: '#fff',
+    marginBottom: 20,
   },
   input: {
     width: '100%',
+    height: 50,
+    borderColor: '#ddd',
+    borderWidth: 1,
+    borderRadius: 5,
+    paddingHorizontal: 10,
+    marginBottom: 15,
     backgroundColor: '#fff',
-    padding: 15,
-    marginVertical: 10,
-    borderRadius: 10,
   },
   button: {
-    backgroundColor: '#FF416C',
     width: '100%',
-    padding: 15,
+    height: 50,
+    backgroundColor: '#4a90e2',
+    justifyContent: 'center',
     alignItems: 'center',
-    borderRadius: 10,
-    marginTop: 10,
+    borderRadius: 5,
+    marginBottom: 15,
   },
   buttonText: {
     color: '#fff',
+    fontSize: 18,
     fontWeight: 'bold',
   },
   link: {
