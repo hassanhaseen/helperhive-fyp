@@ -20,6 +20,8 @@ const ServiceProviderForm = ({ navigation }) => {
   const [description, setDescription] = useState("");
   const [priceRange, setPriceRange] = useState("");
   const [availability, setAvailability] = useState("");
+  const [city, setCity] = useState(""); // State for City
+  const [isCityEditable, setIsCityEditable] = useState(true); // State to control city dropdown
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const categories = [
@@ -34,7 +36,7 @@ const ServiceProviderForm = ({ navigation }) => {
     "AC Repair",
     "Vehicle",
     "Electronics",
-    "Massage"
+    "Massage",
   ];
 
   const availabilityOptions = [
@@ -44,17 +46,51 @@ const ServiceProviderForm = ({ navigation }) => {
     "Custom Schedule",
   ];
 
+  const cities = [
+    "Lahore",
+    "Faisalabad",
+    "Islamabad",
+    "Karachi",
+    "Rawalpindi",
+    "Peshawar",
+    "Multan",
+    "Quetta",
+    "Sialkot",
+    "Gujranwala",
+  ];
+
   useEffect(() => {
     if (!auth.currentUser) {
       Alert.alert("Error", "You must be logged in to register a service.");
       navigation.navigate("SignIn");
+      return;
     }
+
+    // Fetch the previously selected city for the user
+    const fetchUserCity = async () => {
+      try {
+        const userRef = doc(db, "users", auth.currentUser.uid);
+        const userSnap = await getDoc(userRef);
+        if (userSnap.exists()) {
+          const userData = userSnap.data();
+          if (userData.city) {
+            setCity(userData.city); // Pre-select the previously chosen city
+            setIsCityEditable(false); // Disable city selection for subsequent submissions
+          }
+        }
+      } catch (error) {
+        console.error("Error fetching user city:", error);
+      }
+    };
+
+    fetchUserCity();
   }, []);
 
   const handleSubmit = async () => {
     if (!auth.currentUser) return;
 
-    if (!serviceName || !category || !description || !priceRange || !availability) {
+    // Validate required fields
+    if (!serviceName || !category || !description || !priceRange || !availability || !city) {
       Alert.alert("Error", "All fields are required.");
       return;
     }
@@ -85,9 +121,19 @@ const ServiceProviderForm = ({ navigation }) => {
         description,
         priceRange,
         availability,
+        city, // Include the selected city
         createdAt: new Date(),
         status: "Pending",
       });
+
+      // Save the city in the user's document if not already saved
+      if (!userData.city) {
+        await setDoc(
+          userRef,
+          { city }, // Save the selected city
+          { merge: true }
+        );
+      }
 
       // If user is not yet a provider, update their requestStatus
       if (!userData.isServiceProvider) {
@@ -109,8 +155,13 @@ const ServiceProviderForm = ({ navigation }) => {
       <ScrollView style={styles.container}>
         <Text style={styles.title}>Register Your Service</Text>
 
-        <TextInput placeholder="Service Name" value={serviceName} onChangeText={setServiceName} style={styles.input} />
-        
+        <TextInput
+          placeholder="Service Name"
+          value={serviceName}
+          onChangeText={setServiceName}
+          style={styles.input}
+        />
+
         <View style={styles.pickerContainer}>
           <Picker
             selectedValue={category}
@@ -137,16 +188,16 @@ const ServiceProviderForm = ({ navigation }) => {
           keyboardType="numeric"
           style={styles.input}
         />
-        
-        <TextInput 
-          placeholder="Description (At least 10 words)" 
-          value={description} 
-          onChangeText={setDescription} 
-          style={styles.textArea} 
-          multiline 
-          numberOfLines={5} 
+
+        <TextInput
+          placeholder="Description (At least 10 words)"
+          value={description}
+          onChangeText={setDescription}
+          style={styles.textArea}
+          multiline
+          numberOfLines={5}
         />
-        
+
         <View style={styles.pickerContainer}>
           <Picker
             selectedValue={availability}
@@ -162,8 +213,34 @@ const ServiceProviderForm = ({ navigation }) => {
           </Picker>
         </View>
 
-        <TouchableOpacity style={[styles.submitButton, isSubmitting && styles.disabledButton]} onPress={handleSubmit} disabled={isSubmitting}>
-          {isSubmitting ? <ActivityIndicator color="#fff" /> : <Text style={styles.submitButtonText}>Submit</Text>}
+        {/* City Dropdown */}
+        <View style={styles.pickerContainer}>
+          <Picker
+            selectedValue={city}
+            onValueChange={(itemValue) => setCity(itemValue)}
+            style={styles.picker}
+            dropdownIconColor="#fff"
+            mode="dropdown"
+            enabled={isCityEditable} // Enable only for the first-time selection
+          >
+            <Picker.Item label="Select a City" value="" />
+            {cities.map((cityName, index) => (
+              <Picker.Item key={index} label={cityName} value={cityName} />
+            ))}
+          </Picker>
+        </View>
+        {city && <Text style={styles.alreadySelectedText}>Already Selected: {city}</Text>}
+
+        <TouchableOpacity
+          style={[styles.submitButton, isSubmitting && styles.disabledButton]}
+          onPress={handleSubmit}
+          disabled={isSubmitting}
+        >
+          {isSubmitting ? (
+            <ActivityIndicator color="#fff" />
+          ) : (
+            <Text style={styles.submitButtonText}>Submit</Text>
+          )}
         </TouchableOpacity>
       </ScrollView>
     </SafeAreaView>
@@ -183,4 +260,5 @@ const styles = StyleSheet.create({
   submitButton: { backgroundColor: "#4a90e2", padding: 15, borderRadius: 10, marginTop: 20, alignItems: "center" },
   submitButtonText: { color: "#fff", fontSize: 18, fontWeight: "bold" },
   disabledButton: { backgroundColor: "#777" },
+  alreadySelectedText: { color: "#fff", fontSize: 14, marginTop: 5, textAlign: "center" },
 });
