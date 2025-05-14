@@ -106,6 +106,7 @@ const BookingsScreen = ({ navigation }) => {
       await updateDoc(doc(db, "bookings", bookingId), {
         status: "Completed",
         isCompleted: true,
+        hasReviewed: false, // Add this field to track review status
       });
       Toast.show({
         type: "success",
@@ -188,6 +189,31 @@ const BookingsScreen = ({ navigation }) => {
           onPress={() => completeBooking(item.id)}
         >
           <Text style={styles.completeText}>Mark as Completed</Text>
+        </TouchableOpacity>
+      )}
+
+      {item.status === "Completed" && item.userId === user.uid && (
+        <TouchableOpacity
+          style={[
+            styles.completeButton,
+            {
+              backgroundColor: item.hasReviewed
+                ? colors.disabled || "#d3d3d3"
+                : colors.success || "#34d399",
+            },
+          ]}
+          onPress={() => {
+            if (!item.hasReviewed) {
+              navigation.navigate("SubmitReview", { serviceId: item.serviceId });
+              const bookingDocRef = doc(db, "bookings", item.id);
+              updateDoc(bookingDocRef, { hasReviewed: true });
+            }
+          }}
+          disabled={item.hasReviewed}
+        >
+          <Text style={styles.completeText}>
+            {item.hasReviewed ? "Review Submitted" : "Submit a Review"}
+          </Text>
         </TouchableOpacity>
       )}
     </View>

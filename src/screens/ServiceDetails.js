@@ -115,16 +115,6 @@ const ServiceDetails = ({ route, navigation }) => {
         )}
       </View>
 
-      {/* Submit Review Button */}
-      {isServiceProvider === false && (
-        <TouchableOpacity
-          style={[styles.reviewButton, { backgroundColor: colors.primary }]}
-          onPress={() => navigation.navigate("SubmitReview", { serviceId: service.id })}
-        >
-          <Text style={styles.reviewButtonText}>Submit a Review</Text>
-        </TouchableOpacity>
-      )}
-
       {/* ✅ Prevent buttons from appearing until we confirm user type */}
       {isServiceProvider === null ? (
         <ActivityIndicator size="large" color={colors.primary} style={{ marginVertical: 20 }} />

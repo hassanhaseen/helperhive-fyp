@@ -44,6 +44,23 @@ const BookingDetails = ({ navigation, route }) => {
 
   const availableTimes = generateTimeSlots();
 
+  const isTimeSelectable = (time) => {
+    if (selectedDate !== today) return true; // Allow all times for future dates
+
+    const [hour, minute] = time.split(/[: ]/); // Split time into hour and minute
+    const period = time.split(" ")[1]; // Extract AM/PM
+
+    let selectedHour = parseInt(hour, 10);
+    if (period === "PM" && selectedHour !== 12) selectedHour += 12; // Convert PM to 24-hour format
+    if (period === "AM" && selectedHour === 12) selectedHour = 0; // Handle midnight
+
+    const now = new Date();
+    const currentHour = now.getHours();
+    const currentMinute = now.getMinutes();
+
+    return selectedHour > currentHour || (selectedHour === currentHour && parseInt(minute, 10) > currentMinute);
+  };
+
   const handleBooking = async () => {
     if (!selectedDate || !selectedTime) {
       alert("Please select a date and time for the booking.");
@@ -145,10 +162,21 @@ const BookingDetails = ({ navigation, route }) => {
         {availableTimes.map((time, index) => (
           <TouchableOpacity
             key={index}
-            style={[styles.timeButton, selectedTime === time && styles.selectedTime]}
-            onPress={() => setSelectedTime(time)}
+            style={[
+              styles.timeButton,
+              selectedTime === time && styles.selectedTime,
+              !isTimeSelectable(time) && { backgroundColor: "#d3d3d3" }, // Disable past times
+            ]}
+            onPress={() => isTimeSelectable(time) && setSelectedTime(time)}
+            disabled={!isTimeSelectable(time)}
           >
-            <Text style={[styles.timeText, selectedTime === time && styles.selectedTimeText]}>
+            <Text
+              style={[
+                styles.timeText,
+                selectedTime === time && styles.selectedTimeText,
+                !isTimeSelectable(time) && { color: "#a9a9a9" }, // Grey out past times
+              ]}
+            >
               {time}
             </Text>
           </TouchableOpacity>
