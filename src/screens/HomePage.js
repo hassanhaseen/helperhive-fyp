@@ -18,6 +18,7 @@ import { collection, onSnapshot, doc, getDoc } from "firebase/firestore";
 import { UserContext } from "../context/UserContext";
 import { ThemeContext } from "../context/ThemeContext";
 import Toast from "react-native-toast-message";
+import { Picker } from "@react-native-picker/picker";
 
 const HomePage = ({ navigation }) => {
   const { user } = useContext(UserContext);
@@ -30,6 +31,20 @@ const HomePage = ({ navigation }) => {
   const [userImage, setUserImage] = useState("");
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedCategory, setSelectedCategory] = useState(null);
+  const [selectedCity, setSelectedCity] = useState(""); // state for city selection
+
+  const cities = [
+    "Lahore",
+    "Faisalabad",
+    "Islamabad",
+    "Karachi",
+    "Rawalpindi",
+    "Peshawar",
+    "Multan",
+    "Quetta",
+    "Sialkot",
+    "Gujranwala",
+  ];
 
   useEffect(() => {
     if (!user) {
@@ -90,31 +105,46 @@ const HomePage = ({ navigation }) => {
     return () => unsubscribeServices();
   }, []);
 
+  // Filtering logic
+  const filterServices = (query, category, city) => {
+    let filtered = services;
+
+    if (query.trim() !== "") {
+      filtered = filtered.filter((service) =>
+        service.serviceName?.toLowerCase().includes(query.toLowerCase())
+      );
+    }
+
+    if (category) {
+      filtered = filtered.filter(
+        (service) =>
+          service.category?.toLowerCase() === category.toLowerCase()
+      );
+    }
+
+    if (city) {
+      filtered = filtered.filter(
+        (service) => service.city?.toLowerCase() === city.toLowerCase()
+      );
+    }
+
+    setFilteredServices(filtered);
+  };
+
   const handleSearch = (query) => {
     setSearchQuery(query);
-    setSelectedCategory(null);
-
-    if (query.trim() === "") {
-      setFilteredServices(services);
-    } else {
-      const filtered = services.filter((service) =>
-        service.category.toLowerCase().includes(query.toLowerCase())
-      );
-      setFilteredServices(filtered);
-    }
+    filterServices(query, selectedCategory, selectedCity);
   };
 
   const handleCategorySelect = (category) => {
-    if (selectedCategory === category) {
-      setSelectedCategory(null);
-      setFilteredServices(services);
-    } else {
-      setSelectedCategory(category);
-      const filtered = services.filter(
-        (service) => service.category.toLowerCase() === category.toLowerCase()
-      );
-      setFilteredServices(filtered);
-    }
+    const newCategory = selectedCategory === category ? null : category;
+    setSelectedCategory(newCategory);
+    filterServices(searchQuery, newCategory, selectedCity);
+  };
+
+  const handleCitySelect = (city) => {
+    setSelectedCity(city);
+    filterServices(searchQuery, selectedCategory, city);
   };
 
   if (loading) {
@@ -161,13 +191,29 @@ const HomePage = ({ navigation }) => {
             ]}
           >
             <TextInput
-              placeholder="Search by category"
+              placeholder="Search by service name"
               placeholderTextColor={isDarkMode ? "#888" : "#aaa"}
               style={[styles.searchInput, { color: colors.text }]}
               value={searchQuery}
               onChangeText={handleSearch}
             />
             <Icon name="search-outline" size={20} color={colors.text} />
+          </View>
+
+          {/* City Dropdown */}
+          <View style={styles.pickerContainer}>
+            <Picker
+              selectedValue={selectedCity}
+              onValueChange={handleCitySelect}
+              style={styles.picker}
+              dropdownIconColor="#fff"
+              mode="dropdown"
+            >
+              <Picker.Item label="Select a City" value="" />
+              {cities.map((city, index) => (
+                <Picker.Item key={index} label={city} value={city} />
+              ))}
+            </Picker>
           </View>
 
           {/* Services */}
@@ -208,7 +254,7 @@ const HomePage = ({ navigation }) => {
 
           {filteredServices.length === 0 && (
             <Text style={[styles.noResultsText, { color: colors.text }]}>
-              No services found for "{searchQuery || selectedCategory}".
+              No services found for your search criteria.
             </Text>
           )}
 
@@ -217,9 +263,6 @@ const HomePage = ({ navigation }) => {
             <Text style={[styles.sectionTitle00, { color: colors.text }]}>
               Service Categories
             </Text>
-            <TouchableOpacity>
-              <Text style={{ color: colors.primary }}></Text>
-            </TouchableOpacity>
           </View>
 
           <View style={styles.serviceGrid00}>
@@ -318,142 +361,34 @@ const HomePage = ({ navigation }) => {
 export default HomePage;
 
 const styles = StyleSheet.create({
-  loaderContainer: {
-    flex: 1,
-    justifyContent: "center",
-    alignItems: "center",
-  },
-  loadingText: {
-    marginTop: 10,
-    fontSize: 16,
-  },
-  header: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    paddingHorizontal: 20,
-    marginBottom: 20,
-    marginTop: 10,
-  },
-  profileContainer: {
-    flexDirection: "row",
-    alignItems: "center",
-  },
-  profileImage: {
-    width: 45,
-    height: 45,
-    borderRadius: 22.5,
-  },
-  greetingText: {
-    marginLeft: 10,
-    fontSize: 16,
-  },
-  searchBar: {
-    flexDirection: "row",
-    marginHorizontal: 20,
-    borderRadius: 10,
-    padding: 12,
-    alignItems: "center",
-    marginBottom: 20,
-  },
-  searchInput: {
-    flex: 1,
-    marginRight: 10,
-    fontSize: 14,
-  },
-  section: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    marginHorizontal: 20,
-    marginVertical: 10,
-  },
-  sectionTitle: {
-    fontSize: 18,
-    fontWeight: "bold",
-  },
-  serviceList: {
-    paddingLeft: 20,
-  },
-  serviceCard: {
-    borderRadius: 10,
-    padding: 15,
-    marginRight: 15,
-    width: 250,
-    elevation: 3,
-  },
-  serviceName: {
-    fontSize: 18,
-    fontWeight: "bold",
-    marginBottom: 5,
-  },
-  serviceCategory: {
-    marginBottom: 5,
-  },
-  serviceDescription: {
-    marginBottom: 10,
-  },
-  servicePrice: {
-    fontWeight: "bold",
-  },
-  noResultsText: {
-    textAlign: "center",
-    marginTop: 20,
-    fontSize: 16,
-  },
-  section00: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    marginHorizontal: 20,
-    marginVertical: 10,
-  },
-  sectionTitle00: {
-    fontSize: 18,
-    fontWeight: "bold",
-  },
-  serviceGrid00: {
-    flexDirection: "row",
-    flexWrap: "wrap",
-    justifyContent: "space-around",
-    marginHorizontal: 10,
-  },
-  serviceItem00: {
-    width: "25%",
-    alignItems: "center",
-    marginBottom: 20,
-  },
-  serviceIcon00: {
-    width: 50,
-    height: 50,
-    borderRadius: 25,
-    justifyContent: "center",
-    alignItems: "center",
-  },
-  serviceText00: {
-    fontSize: 14,
-    textAlign: "center",
-    marginTop: 8,
-  },
-  offerContainer: {
-    flexDirection: "row",
-    paddingLeft: 20,
-  },
-  offerCard: {
-    borderRadius: 10,
-    padding: 20,
-    marginRight: 15,
-    width: 250,
-  },
-  offerText: {
-    color: "#fff",
-    fontSize: 24,
-    fontWeight: "bold",
-  },
-  offerSubtext: {
-    color: "#fff",
-    fontSize: 16,
-    marginVertical: 5,
-  },
-  offerDesc: {
-    color: "#fff",
-    fontSize: 12,
-  },
+  loaderContainer: { flex: 1, justifyContent: "center", alignItems: "center" },
+  loadingText: { marginTop: 10, fontSize: 16 },
+  header: { flexDirection: "row", justifyContent: "space-between", paddingHorizontal: 20, marginBottom: 20, marginTop: 10 },
+  profileContainer: { flexDirection: "row", alignItems: "center" },
+  profileImage: { width: 45, height: 45, borderRadius: 22.5 },
+  greetingText: { marginLeft: 10, fontSize: 16 },
+  searchBar: { flexDirection: "row", marginHorizontal: 20, borderRadius: 10, padding: 12, alignItems: "center", marginBottom: 20 },
+  searchInput: { flex: 1, marginRight: 10, fontSize: 14 },
+  pickerContainer: { marginHorizontal: 20, marginBottom: 15, backgroundColor: "#4a90e2", borderRadius: 10, overflow: "hidden" },
+  picker: { color: "#fff", padding: 10 },
+  section: { flexDirection: "row", justifyContent: "space-between", marginHorizontal: 20, marginVertical: 10 },
+  sectionTitle: { fontSize: 18, fontWeight: "bold" },
+  serviceList: { paddingLeft: 20 },
+  serviceCard: { borderRadius: 10, padding: 15, marginRight: 15, width: 250, elevation: 3 },
+  serviceName: { fontSize: 18, fontWeight: "bold", marginBottom: 5 },
+  serviceCategory: { marginBottom: 5 },
+  serviceDescription: { marginBottom: 10 },
+  servicePrice: { fontWeight: "bold" },
+  noResultsText: { textAlign: "center", marginTop: 20, fontSize: 16 },
+  section00: { flexDirection: "row", justifyContent: "space-between", marginHorizontal: 20, marginVertical: 10 },
+  sectionTitle00: { fontSize: 18, fontWeight: "bold" },
+  serviceGrid00: { flexDirection: "row", flexWrap: "wrap", justifyContent: "space-around", marginHorizontal: 10 },
+  serviceItem00: { width: "25%", alignItems: "center", marginBottom: 20 },
+  serviceIcon00: { width: 50, height: 50, borderRadius: 25, justifyContent: "center", alignItems: "center" },
+  serviceText00: { fontSize: 14, textAlign: "center", marginTop: 8 },
+  offerContainer: { flexDirection: "row", paddingLeft: 20 },
+  offerCard: { borderRadius: 10, padding: 20, marginRight: 15, width: 250 },
+  offerText: { color: "#fff", fontSize: 24, fontWeight: "bold" },
+  offerSubtext: { color: "#fff", fontSize: 16, marginVertical: 5 },
+  offerDesc: { color: "#fff", fontSize: 12 },
 });
