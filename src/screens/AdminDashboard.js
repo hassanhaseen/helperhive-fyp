@@ -21,6 +21,7 @@ const AdminDashboard = () => {
   const [expanded, setExpanded] = useState({ user: null, provider: null, service: null, allUser: null });
   const [users, setUsers] = useState([]);
   const [allUsers, setAllUsers] = useState([]);
+  const [tickets, setTickets] = useState([]);
 
   useEffect(() => {
     setLoading(true);
@@ -43,9 +44,15 @@ const AdminDashboard = () => {
       setLoading(false);
     });
 
+    // Fetch Tickets
+    const unsubscribeTickets = onSnapshot(collection(db, "tickets"), (snapshot) => {
+      setTickets(snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() })));
+    });
+
     return () => {
       unsubscribeUsers();
       unsubscribeServices();
+      unsubscribeTickets();
     };
   }, []);
 
@@ -265,6 +272,40 @@ const AdminDashboard = () => {
           )}
         </View>
       )) : <Text style={styles.noDataText}>No Users Found</Text>}
+
+      {/* Support Tickets */}
+      <Text style={styles.sectionTitle}>Support Tickets</Text>
+      {tickets.length > 0 ? tickets.map((ticket) => (
+        <View key={ticket.id} style={styles.card}>
+          <Text style={styles.cardTitle}>{ticket.subject}</Text>
+          <Text style={styles.infoText}>From: {ticket.userId}</Text>
+          <Text style={styles.infoText}>Against: {ticket.providerId}</Text>
+          <Text style={styles.infoText}>Status: {ticket.status}</Text>
+          <Text style={styles.infoText}>Description: {ticket.description}</Text>
+          {ticket.adminResponse && (
+            <Text style={styles.infoText}>
+              <Text style={styles.infoLabel}>Admin Response:</Text> {ticket.adminResponse}
+            </Text>
+          )}
+          {ticket.status !== "Resolved" && (
+            <TouchableOpacity
+              style={styles.approveButton}
+              onPress={async () => {
+                const response = prompt("Enter response to user:");
+                if (response) {
+                  await updateDoc(doc(db, "tickets", ticket.id), {
+                    status: "Resolved",
+                    adminResponse: response,
+                    updatedAt: new Date(),
+                  });
+                }
+              }}
+            >
+              <Text style={styles.buttonText}>Mark as Resolved</Text>
+            </TouchableOpacity>
+          )}
+        </View>
+      )) : <Text style={styles.noDataText}>No Tickets</Text>}
     </ScrollView>
   );
 };

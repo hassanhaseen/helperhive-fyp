@@ -193,28 +193,44 @@ const BookingsScreen = ({ navigation }) => {
       )}
 
       {item.status === "Completed" && item.userId === user.uid && (
-        <TouchableOpacity
-          style={[
-            styles.completeButton,
-            {
-              backgroundColor: item.hasReviewed
-                ? colors.disabled || "#d3d3d3"
-                : colors.success || "#34d399",
-            },
-          ]}
-          onPress={() => {
-            if (!item.hasReviewed) {
-              navigation.navigate("SubmitReview", { serviceId: item.serviceId });
-              const bookingDocRef = doc(db, "bookings", item.id);
-              updateDoc(bookingDocRef, { hasReviewed: true });
+        <>
+          <TouchableOpacity
+            style={[
+              styles.completeButton,
+              {
+                backgroundColor: item.hasReviewed
+                  ? colors.disabled || "#d3d3d3"
+                  : colors.success || "#34d399",
+              },
+            ]}
+            onPress={() => {
+              if (!item.hasReviewed) {
+                navigation.navigate("SubmitReview", { serviceId: item.serviceId });
+                const bookingDocRef = doc(db, "bookings", item.id);
+                updateDoc(bookingDocRef, { hasReviewed: true });
+              }
+            }}
+            disabled={item.hasReviewed}
+          >
+            <Text style={styles.completeText}>
+              {item.hasReviewed ? "Review Submitted" : "Submit a Review"}
+            </Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={[
+              styles.completeButton,
+              { backgroundColor: "#f87171", marginTop: 8 },
+            ]}
+            onPress={() =>
+              navigation.navigate("CreateTicket", {
+                providerId: item.providerId,
+                serviceId: item.serviceId,
+              })
             }
-          }}
-          disabled={item.hasReviewed}
-        >
-          <Text style={styles.completeText}>
-            {item.hasReviewed ? "Review Submitted" : "Submit a Review"}
-          </Text>
-        </TouchableOpacity>
+          >
+            <Text style={styles.completeText}>Report / Dispute</Text>
+          </TouchableOpacity>
+        </>
       )}
     </View>
   );

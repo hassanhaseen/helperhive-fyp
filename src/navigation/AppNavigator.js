@@ -22,6 +22,7 @@ import PrivacyPolicyPage from "../screens/PrivacyPolicyPage";
 import HelpCenterPage from "../screens/HelpCenterPage";
 import FAQAnswerScreen from '../screens/FAQAnswerScreen';
 import BookingDetails from "../screens/BookingDetails";
+import CreateTicket from "../screens/CreateTicket";
 
 // Import User Context
 import { UserContext } from "../context/UserContext";
@@ -66,10 +67,7 @@ const AppNavigator = () => {
         <Stack.Screen name="HelpCenterPage" component={HelpCenterPage} />
         <Stack.Screen name="FAQAnswer" component={FAQAnswerScreen} />
         <Stack.Screen name="BookingDetails" component={BookingDetails} />
-
-
-
-
+        <Stack.Screen name="CreateTicket" component={CreateTicket} />
       </Stack.Navigator>
     </NavigationContainer>
   );

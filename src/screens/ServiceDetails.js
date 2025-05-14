@@ -139,6 +139,20 @@ const ServiceDetails = ({ route, navigation }) => {
           </View>
         )
       )}
+
+      {!isServiceProvider && user?.uid !== service.userId && (
+        <TouchableOpacity
+          style={styles.reviewButton}
+          onPress={() =>
+            navigation.navigate("CreateTicket", {
+              providerId: service.userId,
+              serviceId: service.id,
+            })
+          }
+        >
+          <Text style={styles.reviewButtonText}>Report / Dispute</Text>
+        </TouchableOpacity>
+      )}
     </ScrollView>
   );
 };
