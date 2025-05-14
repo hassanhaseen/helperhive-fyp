@@ -10,9 +10,9 @@ import {
   SafeAreaView,
   StatusBar,
   Alert,
-  ActivityIndicator,
 } from "react-native";
 import Icon from "react-native-vector-icons/Ionicons";
+import { auth, db } from "../firebase";
 import {
   collection,
   addDoc,
@@ -23,36 +23,33 @@ import {
   serverTimestamp,
   doc,
   getDoc,
-  getDocs,
-  limit,
-  updateDoc,
 } from "firebase/firestore";
-import { useFocusEffect } from "@react-navigation/native";
-import { auth, db } from "../firebase";
 import { ThemeContext } from "../context/ThemeContext";
 import Navbar from "./navbar";
 
 const ChatScreen = ({ route, navigation }) => {
-  const { recipientId, recipientName } = route.params || {};
+  const { recipientId, recipientName, serviceId } = route.params || {};
   const { colors, isDarkMode } = useContext(ThemeContext);
 
   const [messages, setMessages] = useState([]);
   const [messageText, setMessageText] = useState("");
-  const [userStatus, setUserStatus] = useState({ isOnline: false, lastSeen: null });
+  const [userStatus, setUserStatus] = useState({
+    isOnline: false,
+    lastSeen: null,
+  });
   const [bookingStatus, setBookingStatus] = useState("");
   const [hasReviewed, setHasReviewed] = useState(false);
   const [userRole, setUserRole] = useState("");
-  const [isServiceProvider, setIsServiceProvider] = useState(false); // Default value to avoid null issues
-  const [serviceId, setServiceId] = useState(null);
-  const [isCompleted, setIsCompleted] = useState(false);
+  const [isParticipant0, setIsParticipant0] = useState(false);
 
   const flatListRef = useRef();
 
   // Fetch messages
   useEffect(() => {
-    if (!recipientId || !auth.currentUser) return;
+    if (!recipientId) return;
 
     const messagesRef = collection(db, "messages");
+
     const q = query(
       messagesRef,
       where("participants", "array-contains", auth.currentUser.uid),
@@ -64,8 +61,10 @@ const ChatScreen = ({ route, navigation }) => {
         .map((doc) => ({ id: doc.id, ...doc.data() }))
         .filter(
           (msg) =>
-            (msg.senderId === auth.currentUser.uid && msg.recipientId === recipientId) ||
-            (msg.recipientId === auth.currentUser.uid && msg.senderId === recipientId)
+            (msg.senderId === auth.currentUser.uid &&
+              msg.recipientId === recipientId) ||
+            (msg.recipientId === auth.currentUser.uid &&
+              msg.senderId === recipientId)
         );
 
       setMessages(msgs);
@@ -78,83 +77,74 @@ const ChatScreen = ({ route, navigation }) => {
     return () => unsubscribe();
   }, [recipientId]);
 
-  // Fetch latest booking details
-  const fetchLatestBooking = async () => {
-    if (!auth.currentUser?.uid) return;
+  // Listen for recipient's online/lastSeen status
+  useEffect(() => {
+    if (!recipientId) return;
 
-    const bookingsRef = collection(db, "bookings");
-    const q = query(
-      bookingsRef,
-      where("participants", "array-contains", auth.currentUser.uid),
-      where("serviceProviderId", "==", recipientId),
-      orderBy("timestamp", "desc"),
-      limit(1)
-    );
+    const userDocRef = doc(db, "users", recipientId);
 
-    const querySnapshot = await getDocs(q);
-    if (!querySnapshot.empty) {
-      const latestBooking = querySnapshot.docs[0].data();
-      setServiceId(latestBooking.serviceId);
-      setBookingStatus(latestBooking.status);
-      setHasReviewed(latestBooking.hasReviewed || false);
-      setIsCompleted(latestBooking.isCompleted || false);
-      console.log("Latest Booking:", latestBooking); // Debug statement
-      console.log("isCompleted from DB:", latestBooking.isCompleted); // Debug statement
-      console.log("hasReviewed from DB:", latestBooking.hasReviewed); // Debug statement
-      console.log("isCompleted state:", isCompleted); // Debug statement
-      console.log("hasReviewed state:", hasReviewed); // Debug statement
-    } else {
-      console.log("No booking found for the current user and service provider."); // Debug statement
-    }
-  };
+    const unsubscribe = onSnapshot(userDocRef, (docSnapshot) => {
+      if (docSnapshot.exists()) {
+        const data = docSnapshot.data();
+        setUserStatus({
+          isOnline: data.isOnline,
+          lastSeen: data.lastSeen,
+        });
+      }
+    });
 
-  useFocusEffect(
-    React.useCallback(() => {
-      fetchLatestBooking();
-    }, [recipientId])
-  );
+    return () => unsubscribe();
+  }, [recipientId]);
 
-  // Fetch current user's role and determine if they are a service provider
+  // Fetch booking status and check if the user has already submitted a review
+  useEffect(() => {
+    if (!serviceId) return;
+
+    const bookingDocRef = doc(db, "bookings", serviceId);
+
+    const unsubscribe = onSnapshot(bookingDocRef, (docSnapshot) => {
+      if (docSnapshot.exists()) {
+        const bookingData = docSnapshot.data();
+        setBookingStatus(bookingData.status);
+        setHasReviewed(bookingData.hasReviewed || false);
+        setIsParticipant0(bookingData.participants[0] === auth.currentUser.uid);
+        console.log("Service ID:", serviceId);
+        console.log("Booking status:", bookingData.status);
+        console.log("Has reviewed:", bookingData.hasReviewed);
+        console.log("Is participant 0:", bookingData.participants[0] === auth.currentUser.uid);
+      }
+    });
+
+    return () => unsubscribe();
+  }, [recipientId, serviceId]);
+
+  // Fetch current user's role
   useEffect(() => {
     const fetchUserRole = async () => {
-      if (!auth.currentUser?.uid) return;
-
       const userDocRef = doc(db, "users", auth.currentUser.uid);
       const userDoc = await getDoc(userDocRef);
       if (userDoc.exists()) {
         const userData = userDoc.data();
         setUserRole(userData.role);
-        setIsServiceProvider(userData.isServiceProvider || false);
-        console.log("User Role:", userData.role); // Debug statement
-        console.log("Is Service Provider:", userData.isServiceProvider); // Debug statement
       }
     };
 
     fetchUserRole();
-  }, [auth.currentUser?.uid]);
+  }, []);
 
-  // Handle Submit Review button press
-  const handleSubmitReviewPress = () => {
-    console.log("isCompleted:", isCompleted); // Debug statement
-    console.log("hasReviewed:", hasReviewed); // Debug statement
-    console.log("isServiceProvider:", isServiceProvider); // Debug statement
-
-    if (isCompleted && !hasReviewed) {
-      navigation.navigate("SubmitReview", {
-        serviceId,
-        onGoBack: async () => {
-          await updateDoc(doc(db, "bookings", serviceId), {
-            hasReviewed: true,
-          });
-          fetchLatestBooking();
-        },
+  // Create a new chat document
+  const createNewChat = async () => {
+    try {
+      await addDoc(collection(db, "chats"), {
+        participants: [auth.currentUser.uid, recipientId],
+        createdAt: serverTimestamp(),
       });
-    } else {
-      Alert.alert("Notification", "You can only submit a review once the service is completed and you haven't reviewed yet.");
+    } catch (error) {
+      console.error("Error creating new chat:", error);
     }
   };
 
-  // Send message function
+  // Send message
   const sendMessage = async () => {
     if (!messageText.trim()) return;
 
@@ -188,7 +178,14 @@ const ChatScreen = ({ route, navigation }) => {
           maxWidth: "75%",
         }}
       >
-        <Text style={{ color: isSender ? "#fff" : colors.text }}>{item.text || ""}</Text>
+        <Text
+          style={{
+            color: isSender ? "#fff" : colors.text,
+          }}
+        >
+          {item.text || ""}
+        </Text>
+
         <Text style={{ fontSize: 10, color: "#888", marginTop: 4 }}>
           {item.timestamp?.seconds
             ? new Date(item.timestamp.seconds * 1000).toLocaleTimeString([], {
@@ -215,9 +212,27 @@ const ChatScreen = ({ route, navigation }) => {
     })}`;
   };
 
+  // Handle Submit Review button press
+  const handleSubmitReviewPress = () => {
+    if (bookingStatus === "Completed" && !hasReviewed) {
+      console.log("Navigating to SubmitReview with serviceId:", serviceId);
+      navigation.navigate("SubmitReview", { serviceId });
+    } else {
+      Alert.alert("Notification", "You can only submit a review once the service is completed and you haven't reviewed yet.");
+    }
+  };
+
+  // Call createNewChat when the component mounts
+  useEffect(() => {
+    createNewChat();
+  }, []);
+
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: colors.background }}>
-      <StatusBar backgroundColor={colors.background} barStyle={isDarkMode ? "light-content" : "dark-content"} />
+      <StatusBar
+        backgroundColor={colors.background}
+        barStyle={isDarkMode ? "light-content" : "dark-content"}
+      />
 
       <View style={{ flex: 1 }}>
         {/* Header */}
@@ -240,12 +255,17 @@ const ChatScreen = ({ route, navigation }) => {
               {recipientName || "Chat"}
             </Text>
 
-            <Text style={{ fontSize: 12, color: userStatus.isOnline ? "green" : colors.text }}>
+            <Text
+              style={{
+                fontSize: 12,
+                color: userStatus.isOnline ? "green" : colors.text,
+              }}
+            >
               {userStatus.isOnline
                 ? "Online"
                 : userStatus.lastSeen
-                ? `${recipientName} last seen: ${formatLastSeen(userStatus.lastSeen)}`
-                : `${recipientName} is Offline`}
+                ? `Last seen: ${formatLastSeen(userStatus.lastSeen)}`
+                : "Offline"}
             </Text>
           </View>
 
@@ -270,27 +290,17 @@ const ChatScreen = ({ route, navigation }) => {
           contentContainerStyle={{ padding: 15 }}
           showsVerticalScrollIndicator={false}
           ListEmptyComponent={
-            <Text style={{ textAlign: "center", color: colors.text, marginTop: 20 }}>No messages yet.</Text>
+            <Text style={{ textAlign: 'center', color: colors.text, marginTop: 20 }}>
+              No messages yet.
+            </Text>
           }
         />
 
-        {/* Debugging statements */}
-        {console.log("isServiceProvider:", isServiceProvider)}
-        {console.log("isCompleted:", isCompleted)}
-        {console.log("hasReviewed:", hasReviewed)}
-
-        {/* Submit Review Button */}
-        {isServiceProvider === false && isCompleted && !hasReviewed && (
-          <TouchableOpacity
-            style={{ backgroundColor: "green", padding: 15, borderRadius: 10, margin: 15, alignItems: "center" }}
-            onPress={handleSubmitReviewPress}
-          >
-            <Text style={{ color: "#fff", fontWeight: "bold" }}>Submit Review</Text>
-          </TouchableOpacity>
-        )}
-
         {/* Message Input */}
-        <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : undefined} keyboardVerticalOffset={90}>
+        <KeyboardAvoidingView
+          behavior={Platform.OS === "ios" ? "padding" : undefined}
+          keyboardVerticalOffset={90}
+        >
           <View
             style={{
               flexDirection: "row",
@@ -305,7 +315,12 @@ const ChatScreen = ({ route, navigation }) => {
               onChangeText={setMessageText}
               placeholder="Type a message..."
               placeholderTextColor={colors.text}
-              style={{ flex: 1, color: colors.text, paddingHorizontal: 10, maxHeight: 120 }}
+              style={{
+                flex: 1,
+                color: colors.text,
+                paddingHorizontal: 10,
+                maxHeight: 120,
+              }}
               multiline
             />
             <TouchableOpacity onPress={sendMessage}>
@@ -313,6 +328,22 @@ const ChatScreen = ({ route, navigation }) => {
             </TouchableOpacity>
           </View>
         </KeyboardAvoidingView>
+
+        {/* Submit Review Button */}
+        {userRole === "user" && isParticipant0 && (
+          <TouchableOpacity
+            style={{
+              backgroundColor: "green", // Set the button color to green
+              padding: 15,
+              borderRadius: 10,
+              margin: 15,
+              alignItems: "center",
+            }}
+            onPress={handleSubmitReviewPress}
+          >
+            <Text style={{ color: "#fff", fontWeight: "bold" }}>Submit Review</Text>
+          </TouchableOpacity>
+        )}
 
         {/* Bottom Navbar */}
         <Navbar navigation={navigation} activeTab="Inbox" />
