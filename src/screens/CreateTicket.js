@@ -6,7 +6,7 @@ import { ThemeContext } from "../context/ThemeContext";
 import Toast from "react-native-toast-message";
 
 const CreateTicket = ({ route, navigation }) => {
-  const { providerId, serviceId } = route.params || {};
+  const { providerId, serviceId, userId } = route.params || {};
   const { colors } = useContext(ThemeContext);
   const [subject, setSubject] = useState("");
   const [description, setDescription] = useState("");
@@ -20,8 +20,8 @@ const CreateTicket = ({ route, navigation }) => {
     setLoading(true);
     try {
       await addDoc(collection(db, "tickets"), {
-        userId: auth.currentUser.uid,
-        providerId,
+        fromId: auth.currentUser.uid, // Always the current logged-in user
+        againstId: userId || providerId, // The opposite user (userId if provided, otherwise providerId)
         serviceId,
         subject,
         description,

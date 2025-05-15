@@ -39,6 +39,7 @@ const FillProfilePage = ({ navigation }) => {
   const [loading, setLoading] = useState(false);
   const [requestStatus, setRequestStatus] = useState("");
   const [showModal, setShowModal] = useState(false);
+  const [errors, setErrors] = useState({});
 
   useEffect(() => {
     const currentUser = auth.currentUser;
@@ -47,8 +48,6 @@ const FillProfilePage = ({ navigation }) => {
       setEmail(currentUser.email || "");
       checkExistingRequest(currentUser.uid);
     }
-
-
   }, []);
 
   const checkExistingRequest = async (userId) => {
@@ -123,12 +122,43 @@ const FillProfilePage = ({ navigation }) => {
 
   const validateDate = (dob) => {
     const regex = /^(0[1-9]|[12][0-9]|3[01])-(0[1-9]|1[012])-(19|20)\d\d$/;
-    return regex.test(dob);
+    if (!regex.test(dob)) return false;
+
+    const [day, month, year] = dob.split("-").map(Number);
+    if (year < 1975 || year > 2007) return false; // Ensure DOB is between 1975 and 2007
+
+    return true;
   };
 
   const validateEmail = (email) => {
     const regex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     return regex.test(email);
+  };
+
+  const handleValidation = (field, value) => {
+    let error = "";
+
+    switch (field) {
+      case "name":
+        if (!value) error = "Name is required.";
+        break;
+      case "email":
+        if (!validateEmail(value)) error = "Invalid email address.";
+        break;
+      case "phone":
+        if (value.length !== 11) error = "Phone number must be exactly 11 digits.";
+        break;
+      case "cnicNumber":
+        if (value.length < 14) error = "CNIC must be in XXXXX-XXXXXXX-X format.";
+        break;
+      case "dateOfBirth":
+        if (!validateDate(value)) error = "DOB must be in DD-MM-YYYY format and between 1975-2007.";
+        break;
+      default:
+        break;
+    }
+
+    setErrors((prevErrors) => ({ ...prevErrors, [field]: error }));
   };
 
   const validateForm = () => {
@@ -172,7 +202,7 @@ const FillProfilePage = ({ navigation }) => {
       Toast.show({
         type: "error",
         text1: "Invalid Date",
-        text2: "Enter Date of Birth in DD-MM-YYYY format.",
+        text2: "Enter Date of Birth in DD-MM-YYYY format and ensure age is between 18 and 50 years.",
       });
       return false;
     }
@@ -182,6 +212,15 @@ const FillProfilePage = ({ navigation }) => {
         type: "error",
         text1: "Invalid CNIC",
         text2: "Enter a valid CNIC number (XXXXX-XXXXXXX-X).",
+      });
+      return false;
+    }
+
+    if (phone.length !== 11) {
+      Toast.show({
+        type: "error",
+        text1: "Invalid Phone Number",
+        text2: "Phone number must be exactly 11 digits.",
       });
       return false;
     }
@@ -320,25 +359,102 @@ const FillProfilePage = ({ navigation }) => {
 
           <View style={styles.form}>
             {/* Form Inputs */}
+            <TextInput
+              placeholder="Full Name*"
+              placeholderTextColor={colors.placeholder || (isDarkMode ? "#888" : "#888")}
+              value={name}
+              onChangeText={(value) => {
+                setName(value);
+                handleValidation("name", value);
+              }}
+              style={[
+                styles.input,
+                {
+                  backgroundColor: colors.card,
+                  color: colors.text,
+                  borderColor: errors.name ? "red" : colors.border,
+                },
+              ]}
+            />
+
+            <TextInput
+              placeholder="Email*"
+              placeholderTextColor={colors.placeholder || (isDarkMode ? "#888" : "#888")}
+              value={email}
+              onChangeText={(value) => {
+                setEmail(value);
+                handleValidation("email", value);
+              }}
+              style={[
+                styles.input,
+                {
+                  backgroundColor: colors.card,
+                  color: colors.text,
+                  borderColor: errors.email ? "red" : colors.border,
+                },
+              ]}
+            />
+
+            <TextInput
+              placeholder="Phone Number*"
+              placeholderTextColor={colors.placeholder || (isDarkMode ? "#888" : "#888")}
+              value={phone}
+              onChangeText={(value) => {
+                setPhone(value);
+                handleValidation("phone", value);
+              }}
+              keyboardType="phone-pad"
+              style={[
+                styles.input,
+                {
+                  backgroundColor: colors.card,
+                  color: colors.text,
+                  borderColor: errors.phone ? "red" : colors.border,
+                },
+              ]}
+            />
+
+            <TextInput
+              placeholder="CNIC Number (XXXXX-XXXXXXX-X)*"
+              placeholderTextColor={colors.placeholder || (isDarkMode ? "#888" : "#888")}
+              value={cnicNumber}
+              onChangeText={(value) => {
+                formatCNICInput(value);
+                handleValidation("cnicNumber", value);
+              }}
+              keyboardType="numeric"
+              maxLength={15}
+              style={[
+                styles.input,
+                {
+                  backgroundColor: colors.card,
+                  color: colors.text,
+                  borderColor: errors.cnicNumber ? "red" : colors.border,
+                },
+              ]}
+            />
+
+            <TextInput
+              placeholder="Date of Birth (DD-MM-YYYY)*"
+              placeholderTextColor={colors.placeholder || (isDarkMode ? "#888" : "#888")}
+              value={dateOfBirth}
+              onChangeText={(value) => {
+                formatDOBInput(value);
+                handleValidation("dateOfBirth", value);
+              }}
+              keyboardType="numeric"
+              maxLength={10}
+              style={[
+                styles.input,
+                {
+                  backgroundColor: colors.card,
+                  color: colors.text,
+                  borderColor: errors.dateOfBirth ? "red" : colors.border,
+                },
+              ]}
+            />
+
             {[
-              {
-                value: name,
-                setter: setName,
-                placeholder: "Full Name*",
-                keyboardType: "default",
-              },
-              {
-                value: email,
-                setter: setEmail,
-                placeholder: "Email*",
-                keyboardType: "email-address",
-              },
-              {
-                value: phone,
-                setter: setPhone,
-                placeholder: "Phone Number*",
-                keyboardType: "phone-pad",
-              },
               {
                 value: experience,
                 setter: setExperience,
@@ -377,46 +493,6 @@ const FillProfilePage = ({ navigation }) => {
                 ]}
               />
             ))}
-
-            {/* CNIC */}
-            <TextInput
-              placeholder="CNIC Number (XXXXX-XXXXXXX-X)*"
-              placeholderTextColor={
-                colors.placeholder || (isDarkMode ? "#888" : "#888")
-              }
-              value={cnicNumber}
-              onChangeText={formatCNICInput}
-              keyboardType="numeric"
-              maxLength={15}
-              style={[
-                styles.input,
-                {
-                  backgroundColor: colors.card,
-                  color: colors.text,
-                  borderColor: colors.border,
-                },
-              ]}
-            />
-
-            {/* Date of Birth */}
-            <TextInput
-              placeholder="Date of Birth (DD-MM-YYYY)*"
-              placeholderTextColor={
-                colors.placeholder || (isDarkMode ? "#888" : "#888")
-              }
-              value={dateOfBirth}
-              onChangeText={formatDOBInput}
-              keyboardType="numeric"
-              maxLength={10}
-              style={[
-                styles.input,
-                {
-                  backgroundColor: colors.card,
-                  color: colors.text,
-                  borderColor: colors.border,
-                },
-              ]}
-            />
 
             {/* CNIC Upload Buttons */}
             <TouchableOpacity

@@ -232,6 +232,23 @@ const BookingsScreen = ({ navigation }) => {
           </TouchableOpacity>
         </>
       )}
+
+      {item.status === "Completed" && item.providerId === user.uid && (
+        <TouchableOpacity
+          style={[
+            styles.completeButton,
+            { backgroundColor: "#f87171", marginTop: 8 },
+          ]}
+          onPress={() =>
+            navigation.navigate("CreateTicket", {
+              userId: item.userId,
+              serviceId: item.serviceId,
+            })
+          }
+        >
+          <Text style={styles.completeText}>Report / Dispute</Text>
+        </TouchableOpacity>
+      )}
     </View>
   );
 

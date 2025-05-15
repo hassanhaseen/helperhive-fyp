@@ -272,8 +272,8 @@ const AdminDashboard = () => {
       {/* Support Tickets */}
       <Text style={[styles.sectionTitle, { color: colors.text }]}>Support Tickets</Text>
       {tickets.length > 0 ? tickets.map((ticket) => {
-        const fromUser = allUsers.find(user => user.id === ticket.userId);
-        const againstUser = allUsers.find(user => user.id === ticket.providerId);
+        const fromUser = allUsers.find(user => user.id === ticket.fromId); // Updated to use fromId
+        const againstUser = allUsers.find(user => user.id === ticket.againstId); // Updated to use againstId
         const badgeStyle =
           ticket.status === "Resolved"
             ? styles.badgeResolved
@@ -285,10 +285,10 @@ const AdminDashboard = () => {
           <View key={ticket.id} style={[styles.card, { backgroundColor: colors.card }]}>
             <Text style={[styles.cardTitle, { color: colors.primary }]}>{ticket.subject}</Text>
             <Text style={styles.infoText}>
-              <Text style={styles.infoLabel}>From:</Text> {fromUser?.name || "Unknown"} ({ticket.userId})
+              <Text style={styles.infoLabel}>From:</Text> {fromUser?.name || "Unknown"} ({ticket.fromId})
             </Text>
             <Text style={styles.infoText}>
-              <Text style={styles.infoLabel}>Against:</Text> {againstUser?.name || "Unknown"} ({ticket.providerId})
+              <Text style={styles.infoLabel}>Against:</Text> {againstUser?.name || "Unknown"} ({ticket.againstId})
             </Text>
             <Text style={styles.infoText}>
               <Text style={styles.infoLabel}>Status:</Text>{" "}
