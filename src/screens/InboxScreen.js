@@ -169,8 +169,6 @@ const InboxScreen = ({ navigation }) => {
           }
           contentContainerStyle={styles.listContainer}
         />
-
-        <Navbar navigation={navigation} activeTab="Inbox" />
       </View>
     </SafeAreaView>
   );

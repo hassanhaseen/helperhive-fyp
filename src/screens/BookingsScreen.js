@@ -20,7 +20,6 @@ import {
   updateDoc,
   serverTimestamp,
 } from "firebase/firestore";
-import Navbar from "./navbar";
 import { ThemeContext } from "../context/ThemeContext";
 import Toast from "react-native-toast-message";
 
@@ -290,8 +289,6 @@ const BookingsScreen = ({ navigation }) => {
             </Text>
           }
         />
-
-        <Navbar navigation={navigation} activeTab="Bookings" />
       </View>
     </SafeAreaView>
   );

@@ -13,7 +13,6 @@ import {
 } from "react-native";
 
 import Icon from "react-native-vector-icons/Ionicons";
-import Navbar from "./navbar";
 
 import { auth, db } from "../firebase";
 import { doc, getDoc, updateDoc, serverTimestamp } from "firebase/firestore";
@@ -177,7 +176,6 @@ const ProfilePage = ({ navigation }) => {
           </TouchableOpacity>
         </View>
       </ScrollView>
-      <Navbar navigation={navigation} activeTab="Profile" />
     </SafeAreaView>
   );
 };

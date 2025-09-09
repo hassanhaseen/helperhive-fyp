@@ -70,7 +70,7 @@ const SignInPage = ({ navigation }) => {
       navigation.dispatch(
         CommonActions.reset({
           index: 0,
-          routes: [{ name: 'HomePage' }],
+          routes: [{ name: 'MainApp' }],
         })
       );
     } catch (error) {
